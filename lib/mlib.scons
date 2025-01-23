@@ -1,0 +1,27 @@
+Import("env")
+
+env.Append(
+    CPPPATH=[
+        Dir("mlib").rdir(),
+    ],
+    SDK_HEADERS=[
+        *(
+            File(f"mlib/m-{name}.h").srcnode()
+            for name in (
+                "algo",
+                "array",
+                "bptree",
+                "core",
+                "deque",
+                "dict",
+                "list",
+                "rbtree",
+                "tuple",
+                "variant",
+            )
+        ),
+    ],
+    CPPDEFINES=[
+        '"M_MEMORY_FULL(x)=abort()"',
+    ],
+)

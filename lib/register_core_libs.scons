@@ -1,0 +1,12 @@
+Import("env")
+
+for libname in [
+    "furi",
+    "mlib",
+    "print",
+    "fatfs",
+    "bit_lib",
+    "datetime",
+    "version",
+]:
+    env.RegisterComponent(f"fwlib_{libname}", env.FindComponentSconscript(libname))

@@ -1,0 +1,11 @@
+Import("env")
+
+SConscript(
+    "#/lib/register_core_libs.scons",
+    exports={"env": env},
+    duplicate=0,
+)
+
+env.AppendUnique(
+    LINT_SOURCES=[Dir("applications").rdir()],
+)
