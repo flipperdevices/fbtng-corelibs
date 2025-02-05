@@ -863,3 +863,13 @@ bool furi_thread_is_suspended(FuriThreadId thread_id) {
 
     return eTaskGetState(hTask) == eSuspended;
 }
+
+void* furi_thread_local_storage_pointer_get(FuriThreadId thread_id, uint32_t index) {
+    furi_check(index < THREAD_STORAGE_INDEX);
+    return pvTaskGetThreadLocalStoragePointer((TaskHandle_t)thread_id, index);
+}
+
+void furi_thread_local_storage_pointer_set(FuriThreadId thread_id, uint32_t index, void* value) {
+    furi_check(index < THREAD_STORAGE_INDEX);
+    vTaskSetThreadLocalStoragePointer((TaskHandle_t)thread_id, index, value);
+}

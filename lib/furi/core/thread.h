@@ -568,6 +568,24 @@ void furi_thread_resume(FuriThreadId thread_id);
  */
 bool furi_thread_is_suspended(FuriThreadId thread_id);
 
+/**
+ * @brief Get the data pointer from the thread local storage array.
+
+ * @param[in] thread_id unique identifier of the thread to be queried
+ * @param[in] index index of the data pointer
+ * @return pointer to the data or NULL if not set
+ */
+void* furi_thread_local_storage_pointer_get(FuriThreadId thread_id, uint32_t index);
+
+/**
+ * @brief Set the data pointer in the thread local storage array.
+ * 
+ * @param[in] thread_id unique identifier of the thread to be modified
+ * @param[in] index index of the data pointer
+ * @param[in] value pointer to the data to be set
+ */
+void furi_thread_local_storage_pointer_set(FuriThreadId thread_id, uint32_t index, void* value);
+
 #ifdef __cplusplus
 }
 #endif
