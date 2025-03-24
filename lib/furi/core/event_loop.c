@@ -249,8 +249,9 @@ void furi_event_loop_run(FuriEventLoop* instance) {
             if(flags & FuriEventLoopFlagCustom) {
                 furi_event_loop_process_custom_events(instance);
             }
+        }
 
-        } else if(!furi_event_loop_process_expired_timers(instance)) {
+        if(!furi_event_loop_process_expired_timers(instance)) {
             furi_event_loop_process_tick(instance);
         }
     }
