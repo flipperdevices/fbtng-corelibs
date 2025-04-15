@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static const char* volatile __furi_check_message = NULL;
+const char* volatile __furi_check_message = NULL;
 static volatile uint32_t __furi_check_registers[13] = {0};
 
 /** Load r12 value to __furi_check_message and store registers to __furi_check_registers */
