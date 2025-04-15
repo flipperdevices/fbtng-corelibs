@@ -208,6 +208,13 @@ static inline void furi_event_loop_process_custom_events(FuriEventLoop* instance
     }
 }
 
+static void furi_event_loop_restore_flags(FuriEventLoop* instance, uint32_t flags) {
+    if(flags) {
+        xTaskNotifyIndexed(
+            (TaskHandle_t)instance->thread_id, FURI_EVENT_LOOP_FLAG_NOTIFY_INDEX, flags, eSetBits);
+    }
+}
+
 void furi_event_loop_run(FuriEventLoop* instance) {
     furi_check(instance);
     furi_check(instance->thread_id == furi_thread_get_current_id());
@@ -236,22 +243,27 @@ void furi_event_loop_run(FuriEventLoop* instance) {
             if(flags & FuriEventLoopFlagStop) {
                 instance->state = FuriEventLoopStateStopped;
                 break;
-            }
-            if(flags & FuriEventLoopFlagEvent) {
-                furi_event_loop_process_waiting_list(instance);
-            }
-            if(flags & FuriEventLoopFlagTimer) {
-                furi_event_loop_process_timer_queue(instance);
-            }
-            if(flags & FuriEventLoopFlagPending) {
-                furi_event_loop_process_pending_callbacks(instance);
-            }
-            if(flags & FuriEventLoopFlagCustom) {
-                furi_event_loop_process_custom_events(instance);
-            }
-        }
 
-        if(!furi_event_loop_process_expired_timers(instance)) {
+            } else if(flags & FuriEventLoopFlagEvent) {
+                furi_event_loop_process_waiting_list(instance);
+                furi_event_loop_restore_flags(instance, flags & ~FuriEventLoopFlagEvent);
+
+            } else if(flags & FuriEventLoopFlagTimer) {
+                furi_event_loop_process_timer_queue(instance);
+                furi_event_loop_restore_flags(instance, flags & ~FuriEventLoopFlagTimer);
+
+            } else if(flags & FuriEventLoopFlagCustom) {
+                furi_event_loop_process_custom_events(instance);
+                furi_event_loop_restore_flags(instance, flags & ~FuriEventLoopFlagCustom);
+
+            } else if(flags & FuriEventLoopFlagPending) {
+                furi_event_loop_process_pending_callbacks(instance);
+
+            } else {
+                furi_crash();
+            }
+
+        } else if(!furi_event_loop_process_expired_timers(instance)) {
             furi_event_loop_process_tick(instance);
         }
     }
