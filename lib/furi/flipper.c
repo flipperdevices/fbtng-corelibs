@@ -35,7 +35,7 @@ FURI_WEAK void flipper_init_services(void) {
 void flipper_init(void) {
     flipper_print_version("Firmware", furi_hal_version_get_firmware_version());
 
-    FURI_LOG_I(TAG, "Boot mode %d", furi_hal_rtc_get_boot_mode());
+    FURI_LOG_I(TAG, "Boot mode %d", furi_hal_nvm_get_boot_mode());
 
     flipper_init_services();
 

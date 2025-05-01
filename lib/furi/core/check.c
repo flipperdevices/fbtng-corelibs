@@ -5,7 +5,7 @@
 #include <furi_hal_debug.h>
 #include <furi_hal_interrupt.h>
 #include <furi_hal_power.h>
-#include <furi_hal_rtc.h>
+#include <furi_hal_nvm.h>
 
 #include <stdio.h>
 
@@ -154,7 +154,7 @@ FURI_NORETURN void __furi_crash_implementation(void) {
         if(ptr < FLASH_BASE || ptr > (FLASH_BASE + FLASH_SIZE)) {
             ptr = (uint32_t) "Check serial logs";
         }
-        furi_hal_rtc_set_fault_data(ptr);
+        furi_hal_nvm_set_fault_data(ptr);
         furi_log_puts("\r\nRebooting system.\r\n");
         furi_log_puts("\033[0m\r\n");
         furi_hal_power_reset();
