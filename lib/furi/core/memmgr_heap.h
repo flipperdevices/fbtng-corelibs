@@ -44,6 +44,10 @@ size_t memmgr_heap_get_max_free_block(void);
  */
 void memmgr_heap_printf_free_blocks(void);
 
+/** Memmgr heap check
+ */
+void memmgr_heap_check(void);
+
 #ifdef __cplusplus
 }
 #endif
