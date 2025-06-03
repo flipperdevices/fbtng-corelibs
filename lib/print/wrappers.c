@@ -20,6 +20,10 @@ int __wrap_printf(const char* format, ...) {
     return ret;
 }
 
+int __wrap_sprintf(char* str, const char* format, va_list args) {
+    return sprintf_(str, format, args);
+}
+
 int __wrap_vsnprintf(char* str, size_t size, const char* format, va_list args) {
     return vsnprintf_(str, size, format, args);
 }

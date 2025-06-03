@@ -13,6 +13,7 @@ int __wrap_vsnprintf(char* str, size_t size, const char* format, va_list args);
 int __wrap_puts(const char* str);
 int __wrap_putchar(int ch);
 int __wrap_putc(int ch, FILE* stream);
+int __wrap_sprintf(char* str, const char* format, va_list args);
 int __wrap_snprintf(char* str, size_t size, const char* format, ...);
 int __wrap_fflush(FILE* stream);
 
