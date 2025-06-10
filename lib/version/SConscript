@@ -22,7 +22,9 @@ libenv.ApplyLibFlags()
 
 # Git Version management
 version_depends = []
-version_id_data = get_fast_git_version_id()
+version_id_data = get_fast_git_version_id(
+    target_dir=libenv.Dir("${PROJECT_ROOT}").abspath
+)
 if version_id_data:
     version_depends = Value(version_id_data)
 
