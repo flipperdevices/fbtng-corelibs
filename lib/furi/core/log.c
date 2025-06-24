@@ -227,3 +227,55 @@ bool furi_log_level_from_string(const char* str, FuriLogLevel* level) {
     }
     return false;
 }
+
+static void
+    furi_log_dump_line(FuriString* string, uint32_t addr, const uint8_t* data, size_t len) {
+    furi_string_printf(string, "\t%08lX: ", addr);
+
+    char text_line[17] = {0};
+
+    for(uint8_t i = 0; i < 16; i++) {
+        if(i < len) {
+            furi_string_cat_printf(string, "%02X ", data[i]);
+            if((data[i] < 0x20) || (data[i] >= 0x7F)) {
+                text_line[i] = '.';
+            } else {
+                text_line[i] = data[i];
+            }
+        } else {
+            furi_string_cat_printf(string, "   ");
+        }
+    }
+
+    furi_string_cat_printf(string, "| %s\r\n", text_line);
+}
+
+void furi_log_hexdump(FuriLogLevel level, const char* tag, const uint8_t* data, size_t len) {
+    if(level > furi_log.log_level) {
+        return;
+    }
+
+    furi_log_print_format(level, tag, "addr: %08lX len: %u", (uint32_t)data, len);
+
+    if(furi_mutex_acquire(furi_log.mutex, furi_kernel_is_running() ? FuriWaitForever : 0) !=
+       FuriStatusOk) {
+        return;
+    }
+    FuriString* string = furi_string_alloc();
+
+    uint32_t addr = 0;
+
+    for(addr = 0; addr < len; addr += 16) {
+        size_t line_len = len - addr;
+        if(line_len > 16) {
+            line_len = 16;
+        }
+        furi_log_dump_line(string, addr, &data[addr], line_len);
+        furi_log_puts(furi_string_get_cstr(string));
+    }
+    furi_log_puts("\r\n");
+
+    furi_string_free(string);
+
+    furi_mutex_release(furi_log.mutex);
+}
