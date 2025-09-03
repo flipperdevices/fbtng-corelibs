@@ -6,6 +6,7 @@
 #include <furi_hal_interrupt.h>
 #include <furi_hal_power.h>
 #include <furi_hal_nvm.h>
+#include <furi_hal_flash.h>
 
 #include <stdio.h>
 
@@ -151,7 +152,8 @@ FURI_NORETURN void __furi_crash_implementation(void) {
 #ifndef FURI_DEBUG
     } else {
         uint32_t ptr = (uint32_t)__furi_check_message;
-        if(ptr < FLASH_BASE || ptr > (FLASH_BASE + FLASH_SIZE)) {
+        if(ptr < (uint32_t)furi_hal_flash_get_base() ||
+           ptr > (uint32_t)furi_hal_flash_get_free_end_address()) {
             ptr = (uint32_t) "Check serial logs";
         }
         furi_hal_nvm_set_fault_data(ptr);
