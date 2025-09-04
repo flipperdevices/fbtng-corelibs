@@ -42,9 +42,9 @@ typedef enum {
 
 typedef enum {
     FuriSignalExit, /**< Request (graceful) exit. */
+    FuriSignalAboutToExit, /**< Notification before exit. */
     // Other standard signals may be added in the future
     FuriSignalCustom = 100, /**< Custom signal values start from here. */
-    FuriSignalAboutToExit
 } FuriSignal;
 
 #ifdef __cplusplus
