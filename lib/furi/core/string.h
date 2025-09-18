@@ -479,6 +479,18 @@ void furi_string_replace_all(
  */
 void furi_string_replace_all_str(FuriString* string, const char needle[], const char replace[]);
 
+/** Converts all characters in the string to their upper-case variants.
+ * 
+ * @param      string   The string
+ */
+void furi_string_to_upper_in_place(FuriString* string);
+
+/** Converts all characters in the string to their lowercase variants.
+ * 
+ * @param      string   The string
+ */
+void furi_string_to_lower_in_place(FuriString* string);
+
 //---------------------------------------------------------------------------
 //                            Start / End tests
 //---------------------------------------------------------------------------

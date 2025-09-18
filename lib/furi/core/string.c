@@ -207,6 +207,20 @@ void furi_string_replace_all(FuriString* v, const FuriString* str1, const FuriSt
     string_replace_all(v->string, str1->string, str2->string);
 }
 
+void furi_string_to_upper_in_place(FuriString* string) {
+    for(size_t i = 0; i < furi_string_size(string); i++) {
+        char c = furi_string_get_char(string, i);
+        furi_string_set_char(string, i, toupper(c));
+    }
+}
+
+void furi_string_to_lower_in_place(FuriString* string) {
+    for(size_t i = 0; i < furi_string_size(string); i++) {
+        char c = furi_string_get_char(string, i);
+        furi_string_set_char(string, i, tolower(c));
+    }
+}
+
 bool furi_string_start_with(const FuriString* v, const FuriString* v2) {
     return string_start_with_string_p(v->string, v2->string);
 }
