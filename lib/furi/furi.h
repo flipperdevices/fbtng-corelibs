@@ -16,6 +16,7 @@
 #include "core/pubsub.h"
 #include "core/record.h"
 #include "core/semaphore.h"
+#include "core/state.h"
 #include "core/thread.h"
 #include "core/thread_list.h"
 #include "core/timer.h"
