@@ -16,7 +16,7 @@ struct FuriStateSub {
 };
 
 ILIST_DEF(StateSubList, FuriStateSub, M_POD_OPLIST);
-#define M_OPL_StateSubList_t() LIST_OPLIST(StateSubList, M_POD_OPLIST)
+#define M_OPL_StateSubList_t() ILIST_OPLIST(StateSubList, M_POD_OPLIST)
 
 struct FuriState {
     FuriMutex* mutex;
@@ -78,7 +78,39 @@ void furi_state_set(FuriState* state, const void* item) {
 // Subscriber (state consumer) API
 // ===============================
 
-FuriStateSub* furi_state_subscribe(
+/**
+ * @warning assumes locked FuriState
+ */
+static FuriStateSub*
+    furi_state_sub_alloc(FuriState* state, FuriStateCallback callback, void* context) {
+    furi_assert(state);
+    furi_assert(callback);
+
+    FuriStateSub* sub = malloc(sizeof(FuriStateSub));
+    sub->callback = callback;
+    sub->context = context;
+    sub->state = state;
+
+    StateSubList_push_back(state->sub_list, sub);
+
+    return sub;
+}
+
+FuriStateSub* furi_state_subscribe(FuriState* state, FuriStateCallback callback, void* context) {
+    furi_check(state);
+    furi_check(callback);
+
+    furi_state_lock(state);
+
+    FuriStateSub* sub = furi_state_sub_alloc(state, callback, context);
+    callback(state->item, context);
+
+    furi_state_unlock(state);
+
+    return sub;
+}
+
+FuriStateSub* furi_state_get_subscribe(
     FuriState* state,
     void* item_out,
     FuriStateCallback callback,
@@ -86,15 +118,10 @@ FuriStateSub* furi_state_subscribe(
     furi_check(state);
     furi_check(callback);
 
-    FuriStateSub* sub = malloc(sizeof(FuriStateSub) + state->item_size);
-    sub->callback = callback;
-    sub->context = context;
-    sub->state = state;
-
     furi_state_lock(state);
 
+    FuriStateSub* sub = furi_state_sub_alloc(state, callback, context);
     if(item_out) memcpy(item_out, state->item, state->item_size);
-    StateSubList_push_back(state->sub_list, sub);
 
     furi_state_unlock(state);
 

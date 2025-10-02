@@ -25,7 +25,7 @@ typedef struct FuriStateSub FuriStateSub;
  * @param[in] item New state
  * @param[in] context Custom context
  * 
- * @note The callback is called from the publisher's thread
+ * @note The callback may be called from a different thread
  */
 typedef void (*FuriStateCallback)(const void* item, void* context);
 
@@ -39,6 +39,9 @@ typedef void (*FuriStateCallback)(const void* item, void* context);
  * @param[in] item_size Size of the contained item
  * 
  * @returns State handle
+ * 
+ * @note The stored state will be initialized to all zeroes. Please call
+ *       `furi_state_set` before giving out the handle to your subscribers.
  */
 FuriState* furi_state_alloc(size_t item_size);
 
@@ -64,16 +67,31 @@ void furi_state_set(FuriState* state, const void* item);
 // ===============================
 
 /**
- * @brief Atomically gets the current state and subscribes to future updates
+ * @brief Calls the callback with the current state and subscribes to future
+ *        state updates
  * 
  * @param[in] state State handle
- * @param[out] item_out Where to write the current state. May be NULL
- * @param[in] callback Callback for future state updates
- * @param[in] context Context for callback
+ * @param[in] callback Callback for state updates. Also gets called once
+ *                     initially with the current state.
+ * @param[in] context Context for callback. May be NULL.
  * 
  * @returns Subscription handle
  */
-FuriStateSub* furi_state_subscribe(
+FuriStateSub* furi_state_subscribe(FuriState* state, FuriStateCallback callback, void* context);
+
+/**
+ * @brief Atomically gets the current state and subscribes to future updates
+ * 
+ * @param[in] state State handle
+ * @param[out] item_out Where to write the current state. May be NULL.
+ * @param[in] callback Callback for future state updates. Unlike
+ *                     `furi_state_subscribe`, doesn't get called with the
+ *                     initial state.
+ * @param[in] context Context for callback. May be NULL.
+ * 
+ * @returns Subscription handle
+ */
+FuriStateSub* furi_state_get_subscribe(
     FuriState* state,
     void* item_out,
     FuriStateCallback callback,
