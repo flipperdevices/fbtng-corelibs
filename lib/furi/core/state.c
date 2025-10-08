@@ -5,7 +5,7 @@
 
 #include <m-i-list.h>
 
-#define MUTEX_TIMEOUT (furi_ms_to_ticks(1000))
+#define MUTEX_TIMEOUT (furi_ms_to_ticks(5000))
 
 struct FuriStateSub {
     FuriState* state;
@@ -40,6 +40,7 @@ static inline void furi_state_unlock(FuriState* state) {
 }
 
 FuriState* furi_state_alloc(size_t item_size) {
+    furi_check(item_size > 0);
     FuriState* state = malloc(sizeof(FuriState) + item_size);
     state->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     StateSubList_init(state->sub_list);
@@ -68,7 +69,7 @@ void furi_state_set(FuriState* state, const void* item) {
     memcpy(state->item, item, state->item_size);
     for
         M_EACH(subscriber, state->sub_list, StateSubList_t) {
-            subscriber->callback(item, subscriber->context);
+            subscriber->callback(state->item, subscriber->context);
         }
 
     furi_state_unlock(state);

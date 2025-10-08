@@ -25,7 +25,10 @@ typedef struct FuriStateSub FuriStateSub;
  * @param[in] item New state
  * @param[in] context Custom context
  * 
- * @note The callback may be called from a different thread
+ * @note Assume that the callback is called from a different thread.
+ * @note Do your thing in the callback quickly to avoid holding up the caller.
+ * @note You must not call any APIs of this `FuriState` from within the
+ *       callback.
  */
 typedef void (*FuriStateCallback)(const void* item, void* context);
 
