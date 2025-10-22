@@ -131,6 +131,11 @@ bool furi_event_loop_process_expired_timers(FuriEventLoop* instance) {
         return false;
     }
 
+    if(timer->request == FuriEventLoopTimerRequestStop) {
+        // Timer scheduled for stoppage, skip it
+        return false;
+    }
+
     TimerList_unlink(timer);
 
     if(timer->periodic) {
