@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static const char* volatile __furi_check_message = NULL;
+const char* volatile __furi_check_message = NULL;
 static volatile uint32_t __furi_check_registers[13] = {0};
 
 /** Load r12 value to __furi_check_message and store registers to __furi_check_registers */
@@ -77,11 +77,13 @@ static void __furi_print_stack_info(void) {
 
 static void __furi_print_heap_info(void) {
     furi_log_puts("\r\n\t     heap total: ");
-    furi_log_putu32(xPortGetTotalHeapSize());
+    furi_log_putu32(configTOTAL_HEAP_SIZE);
     furi_log_puts("\r\n\t      heap free: ");
     furi_log_putu32(xPortGetFreeHeapSize());
+    HeapStats_t heap_stats;
+    vPortGetHeapStats(&heap_stats);
     furi_log_puts("\r\n\t heap watermark: ");
-    furi_log_putu32(xPortGetMinimumEverFreeHeapSize());
+    furi_log_putu32(heap_stats.xMinimumEverFreeBytesRemaining);
     furi_log_puts("\r\n\n");
 }
 
