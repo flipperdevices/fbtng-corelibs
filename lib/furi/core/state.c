@@ -39,6 +39,15 @@ static inline void furi_state_unlock(FuriState* state) {
     furi_check(furi_mutex_release(state->mutex) == FuriStatusOk);
 }
 
+static inline void furi_state_notify(FuriState* state) {
+    furi_assert(state);
+
+    for
+        M_EACH(subscriber, state->sub_list, StateSubList_t) {
+            subscriber->callback(state->item, subscriber->context);
+        }
+}
+
 FuriState* furi_state_alloc(size_t item_size) {
     furi_check(item_size > 0);
     FuriState* state = malloc(sizeof(FuriState) + item_size);
@@ -67,10 +76,25 @@ void furi_state_set(FuriState* state, const void* item) {
     furi_state_lock(state);
 
     memcpy(state->item, item, state->item_size);
-    for
-        M_EACH(subscriber, state->sub_list, StateSubList_t) {
-            subscriber->callback(state->item, subscriber->context);
-        }
+
+    furi_state_notify(state);
+    furi_state_unlock(state);
+}
+
+void* furi_state_acquire(FuriState* state) {
+    furi_check(state);
+    furi_mutex_get_owner(state->mutex);
+
+    furi_state_lock(state);
+    return state->item;
+}
+
+void furi_state_release(FuriState* state, bool notify_change) {
+    furi_check(state);
+
+    if(notify_change) {
+        furi_state_notify(state);
+    }
 
     furi_state_unlock(state);
 }
@@ -142,10 +166,9 @@ void furi_state_unsubscribe(FuriStateSub* sub) {
     free(sub);
 }
 
-void furi_state_get(FuriStateSub* sub, void* item_out) {
-    furi_check(sub);
+void furi_state_get(FuriState* state, void* item_out) {
+    furi_check(state);
     furi_check(item_out);
-    FuriState* state = sub->state;
 
     furi_state_lock(state);
     memcpy(item_out, state->item, state->item_size);
