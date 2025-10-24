@@ -83,7 +83,6 @@ void furi_state_set(FuriState* state, const void* item) {
 
 void* furi_state_acquire(FuriState* state) {
     furi_check(state);
-    furi_mutex_get_owner(state->mutex);
 
     furi_state_lock(state);
     return state->item;
