@@ -90,6 +90,7 @@ void* furi_state_acquire(FuriState* state) {
 
 void furi_state_release(FuriState* state) {
     furi_check(state);
+    furi_check(furi_mutex_get_owner(state->mutex));
 
     furi_state_notify(state);
     furi_state_unlock(state);
