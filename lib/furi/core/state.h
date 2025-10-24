@@ -87,6 +87,22 @@ void* furi_state_acquire(FuriState* state);
  */
 void furi_state_release(FuriState* state);
 
+/**
+ * @brief Shorthand macro for automatically acquiring and releasing the state.
+ *
+ * @note Prefer using this macro over manually acquiring and releasing the state.
+ *
+ * @param state State handle
+ * @param var Declaration for the pointer to the item, complete with type and name
+ * @param code Code to execute while the state is being held
+ */
+#define with_furi_state(state, decl, code) \
+    {                                      \
+        decl = furi_state_acquire(state);  \
+        {code};                            \
+        furi_state_release(state);         \
+    }
+
 // ===============================
 // Subscriber (state consumer) API
 // ===============================
