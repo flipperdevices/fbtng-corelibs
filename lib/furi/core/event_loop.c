@@ -54,7 +54,8 @@ static bool furi_event_loop_signal_callback(uint32_t signal, void* arg, void* co
 FuriEventLoop* furi_event_loop_alloc(void) {
     FuriEventLoop* instance = malloc(sizeof(FuriEventLoop));
 
-    instance->thread_id = furi_thread_get_current_id();
+    FuriThread* thread = furi_thread_get_current();
+    instance->thread_id = furi_thread_get_id(thread);
 
     FuriEventLoopTree_init(instance->tree);
     WaitingList_init(instance->waiting_list);
@@ -67,6 +68,11 @@ FuriEventLoop* furi_event_loop_alloc(void) {
     xTaskNotifyStateClearIndexed(task, FURI_EVENT_LOOP_FLAG_NOTIFY_INDEX);
     ulTaskNotifyValueClearIndexed(task, FURI_EVENT_LOOP_FLAG_NOTIFY_INDEX, 0xFFFFFFFF);
 
+    // Set the default signal callback if none was previously set
+    if(furi_thread_get_signal_callback(thread) == NULL) {
+        furi_thread_set_signal_callback(thread, furi_event_loop_signal_callback, instance);
+    }
+
     return instance;
 }
 
@@ -74,6 +80,12 @@ void furi_event_loop_free(FuriEventLoop* instance) {
     furi_check(instance);
     furi_check(instance->thread_id == furi_thread_get_current_id());
     furi_check(instance->state == FuriEventLoopStateStopped);
+
+    // Disable the default signal callback
+    FuriThread* thread = furi_thread_get_current();
+    if(furi_thread_get_signal_callback(thread) == furi_event_loop_signal_callback) {
+        furi_thread_set_signal_callback(thread, NULL, NULL);
+    }
 
     furi_event_loop_process_timer_queue(instance);
     furi_check(TimerList_empty_p(instance->timer_list));
@@ -212,13 +224,6 @@ void furi_event_loop_run(FuriEventLoop* instance) {
     furi_check(instance);
     furi_check(instance->thread_id == furi_thread_get_current_id());
 
-    FuriThread* thread = furi_thread_get_current();
-
-    // Set the default signal callback if none was previously set
-    if(furi_thread_get_signal_callback(thread) == NULL) {
-        furi_thread_set_signal_callback(thread, furi_event_loop_signal_callback, instance);
-    }
-
     furi_event_loop_init_tick(instance);
 
     instance->state = FuriEventLoopStateRunning;
@@ -254,11 +259,6 @@ void furi_event_loop_run(FuriEventLoop* instance) {
         if(!furi_event_loop_process_expired_timers(instance)) {
             furi_event_loop_process_tick(instance);
         }
-    }
-
-    // Disable the default signal callback
-    if(furi_thread_get_signal_callback(thread) == furi_event_loop_signal_callback) {
-        furi_thread_set_signal_callback(thread, NULL, NULL);
     }
 }
 
