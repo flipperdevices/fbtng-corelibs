@@ -84,9 +84,8 @@ void* furi_state_acquire(FuriState* state);
  *          after calling this function.
  *
  * @param[in] state State handle
- * @param[in] notify_change notify all subscribers if true, do not notify otherwise
  */
-void furi_state_release(FuriState* state, bool notify_change);
+void furi_state_release(FuriState* state);
 
 // ===============================
 // Subscriber (state consumer) API

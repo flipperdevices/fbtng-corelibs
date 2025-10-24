@@ -89,13 +89,10 @@ void* furi_state_acquire(FuriState* state) {
     return state->item;
 }
 
-void furi_state_release(FuriState* state, bool notify_change) {
+void furi_state_release(FuriState* state) {
     furi_check(state);
 
-    if(notify_change) {
-        furi_state_notify(state);
-    }
-
+    furi_state_notify(state);
     furi_state_unlock(state);
 }
 
