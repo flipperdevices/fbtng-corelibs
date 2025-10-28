@@ -49,7 +49,7 @@ typedef void (*FuriStateCallback)(const void* item, void* context);
 FuriState* furi_state_alloc(size_t item_size);
 
 /**
- * @brief Releases a FuriState
+ * @brief Deletes a FuriState
  * 
  * @param[in] state State handle
  * 
@@ -64,6 +64,44 @@ void furi_state_free(FuriState* state);
  * @param[in] item Item to copy data from
  */
 void furi_state_set(FuriState* state, const void* item);
+
+/**
+ * @brief Get the pointer to the contained item for exclusive use
+ *
+ * All subsequent accessor/modifier functions will block until
+ * furi_state_release() is called.
+ *
+ * @param[in] state State handle
+ * @returns Pointer to the contained item
+ */
+void* furi_state_acquire(FuriState* state);
+
+/**
+ * @brief Stop working with the contained item and release the exclusive lock
+ * @pre furi_state_acquire
+ *
+ * @warning It is unsafe to use the pointer obtained with furi_state_acquire()
+ *          after calling this function.
+ *
+ * @param[in] state State handle
+ */
+void furi_state_release(FuriState* state);
+
+/**
+ * @brief Shorthand macro for automatically acquiring and releasing the state.
+ *
+ * @note Prefer using this macro over manually acquiring and releasing the state.
+ *
+ * @param state State handle
+ * @param var Declaration for the pointer to the item, complete with type and name
+ * @param code Code to execute while the state is being held
+ */
+#define with_furi_state(state, decl, code) \
+    {                                      \
+        decl = furi_state_acquire(state);  \
+        {code};                            \
+        furi_state_release(state);         \
+    }
 
 // ===============================
 // Subscriber (state consumer) API
@@ -110,10 +148,10 @@ void furi_state_unsubscribe(FuriStateSub* sub);
 /**
  * @brief Gets the current state
  * 
- * @param[in] sub Subscription handle
+ * @param[in] state State handle
  * @param[out] item_out Where to write the current state
  */
-void furi_state_get(FuriStateSub* sub, void* item_out);
+void furi_state_get(FuriState* state, void* item_out);
 
 #ifdef __cplusplus
 }
