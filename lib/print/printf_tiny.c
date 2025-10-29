@@ -114,6 +114,11 @@
 #include <float.h>
 #endif
 
+#if defined(PRINTF_SUPPORT_LONG_LONG) && defined(PRINTF_SUPPORT_EXPONENTIAL)
+#include <math.h>
+#include <limits.h>
+#endif
+
 // output function type
 typedef void (*out_fct_type)(char character, void* buffer, size_t idx, size_t maxlen);
 
@@ -522,6 +527,13 @@ static size_t _etoa(
     if(!(flags & FLAGS_PRECISION)) {
         prec = PRINTF_DEFAULT_FLOAT_PRECISION;
     }
+
+    // if value is a whole number, print it using %ll method
+#if defined(PRINTF_SUPPORT_LONG_LONG)
+    if(flags & FLAGS_ADAPT_EXP && value < nextafter(ULONG_LONG_MAX, 1) && value == floor(value)) {
+        return _ntoa_long_long(out, buffer, idx, maxlen, value, negative, 10, 0, width, flags);
+    }
+#endif
 
     // determine the decimal exponent
     // based on the algorithm by David Gay (https://www.ampl.com/netlib/fp/dtoa.c)
