@@ -98,7 +98,7 @@ const char* furi_string_get_cstr(const FuriString* s) {
     return string_get_cstr(s->string);
 }
 
-void furi_string_set(FuriString* s, FuriString* source) {
+void furi_string_set(FuriString* s, const FuriString* source) {
     string_set(s->string, source->string);
 }
 
