@@ -194,7 +194,7 @@ const char* furi_string_get_cstr(const FuriString* string);
  * @param      string  The FuriString instance
  * @param      source  The source
  */
-void furi_string_set(FuriString* string, FuriString* source);
+void furi_string_set(FuriString* string, const FuriString* source);
 
 /** Set the string to the other C string.
  *
