@@ -66,7 +66,29 @@ void furi_state_free(FuriState* state);
 void furi_state_set(FuriState* state, const void* item);
 
 /**
- * @brief Get the pointer to the contained item for exclusive use
+ * @brief Get the pointer to the contained item for read-only access
+ *
+ * Multiple readers can access simultaneously. Writers will block until
+ * all readers call furi_state_release_read().
+ *
+ * @param[in] state State handle
+ * @returns Const pointer to the contained item (read-only)
+ */
+const void* furi_state_acquire_read(FuriState* state);
+
+/**
+ * @brief Release read-only access to the contained item
+ * @pre furi_state_acquire_read
+ *
+ * @warning It is unsafe to use the pointer obtained with furi_state_acquire_read()
+ *          after calling this function.
+ *
+ * @param[in] state State handle
+ */
+void furi_state_release_read(FuriState* state);
+
+/**
+ * @brief Get the pointer to the contained item for exclusive write access
  *
  * All subsequent accessor/modifier functions will block until
  * furi_state_release() is called.
@@ -77,7 +99,7 @@ void furi_state_set(FuriState* state, const void* item);
 void* furi_state_acquire(FuriState* state);
 
 /**
- * @brief Stop working with the contained item and release the exclusive lock
+ * @brief Stop working with the contained item and release the exclusive write lock
  * @pre furi_state_acquire
  *
  * @warning It is unsafe to use the pointer obtained with furi_state_acquire()
@@ -88,7 +110,23 @@ void* furi_state_acquire(FuriState* state);
 void furi_state_release(FuriState* state);
 
 /**
- * @brief Shorthand macro for automatically acquiring and releasing the state.
+ * @brief Shorthand macro for automatically acquiring and releasing read-only state access.
+ *
+ * @note Prefer using this macro over manually acquiring and releasing the state.
+ *
+ * @param state State handle
+ * @param var Declaration for the const pointer to the item, complete with type and name
+ * @param code Code to execute while the state is being held
+ */
+#define with_furi_state_read(state, decl, code) \
+    {                                           \
+        decl = furi_state_acquire_read(state);  \
+        {code};                                 \
+        furi_state_release_read(state);         \
+    }
+
+/**
+ * @brief Shorthand macro for automatically acquiring and releasing write state access.
  *
  * @note Prefer using this macro over manually acquiring and releasing the state.
  *

@@ -1,11 +1,11 @@
 #include "state.h"
 #include "kernel.h"
 #include "check.h"
-#include "mutex.h"
+#include "rwlock.h"
 
 #include <m-i-list.h>
 
-#define MUTEX_TIMEOUT (furi_ms_to_ticks(5000))
+#define RWLOCK_TIMEOUT (furi_ms_to_ticks(5000))
 
 struct FuriStateSub {
     FuriState* state;
@@ -19,7 +19,7 @@ ILIST_DEF(StateSubList, FuriStateSub, M_POD_OPLIST);
 #define M_OPL_StateSubList_t() ILIST_OPLIST(StateSubList, M_POD_OPLIST)
 
 struct FuriState {
-    FuriMutex* mutex;
+    FuriRwLock* rwlock;
     StateSubList_t sub_list;
     size_t item_size;
     uint8_t item[];
@@ -29,14 +29,28 @@ struct FuriState {
 // Publisher (state owner) API
 // ===========================
 
-static inline void furi_state_lock(FuriState* state) {
+static inline void furi_state_lock_read(FuriState* state) {
     furi_assert(state);
-    furi_check(furi_mutex_acquire(state->mutex, MUTEX_TIMEOUT) == FuriStatusOk);
+
+    furi_check(furi_rwlock_acquire_read(state->rwlock, RWLOCK_TIMEOUT) == FuriStatusOk);
 }
 
-static inline void furi_state_unlock(FuriState* state) {
+static inline void furi_state_unlock_read(FuriState* state) {
     furi_assert(state);
-    furi_check(furi_mutex_release(state->mutex) == FuriStatusOk);
+
+    furi_check(furi_rwlock_release_read(state->rwlock) == FuriStatusOk);
+}
+
+static inline void furi_state_lock_write(FuriState* state) {
+    furi_assert(state);
+
+    furi_check(furi_rwlock_acquire_write(state->rwlock, RWLOCK_TIMEOUT) == FuriStatusOk);
+}
+
+static inline void furi_state_unlock_write(FuriState* state) {
+    furi_assert(state);
+
+    furi_check(furi_rwlock_release_write(state->rwlock) == FuriStatusOk);
 }
 
 static inline void furi_state_notify(FuriState* state) {
@@ -51,7 +65,7 @@ static inline void furi_state_notify(FuriState* state) {
 FuriState* furi_state_alloc(size_t item_size) {
     furi_check(item_size > 0);
     FuriState* state = malloc(sizeof(FuriState) + item_size);
-    state->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    state->rwlock = furi_rwlock_alloc();
     StateSubList_init(state->sub_list);
     state->item_size = item_size;
     return state;
@@ -60,11 +74,11 @@ FuriState* furi_state_alloc(size_t item_size) {
 void furi_state_free(FuriState* state) {
     furi_check(state);
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
     furi_check(StateSubList_empty_p(state->sub_list));
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
 
-    furi_mutex_free(state->mutex);
+    furi_rwlock_free(state->rwlock);
     StateSubList_clear(state->sub_list);
     free(state);
 }
@@ -73,27 +87,39 @@ void furi_state_set(FuriState* state, const void* item) {
     furi_check(state);
     furi_check(item);
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
 
     memcpy(state->item, item, state->item_size);
 
     furi_state_notify(state);
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
+}
+
+const void* furi_state_acquire_read(FuriState* state) {
+    furi_check(state);
+
+    furi_state_lock_read(state);
+    return state->item;
+}
+
+void furi_state_release_read(FuriState* state) {
+    furi_check(state);
+
+    furi_state_unlock_read(state);
 }
 
 void* furi_state_acquire(FuriState* state) {
     furi_check(state);
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
     return state->item;
 }
 
 void furi_state_release(FuriState* state) {
     furi_check(state);
-    furi_check(furi_mutex_get_owner(state->mutex));
 
     furi_state_notify(state);
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
 }
 
 // ===============================
@@ -122,12 +148,12 @@ FuriStateSub* furi_state_subscribe(FuriState* state, FuriStateCallback callback,
     furi_check(state);
     furi_check(callback);
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
 
     FuriStateSub* sub = furi_state_sub_alloc(state, callback, context);
     callback(state->item, context);
 
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
 
     return sub;
 }
@@ -140,12 +166,12 @@ FuriStateSub* furi_state_get_subscribe(
     furi_check(state);
     furi_check(callback);
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
 
     FuriStateSub* sub = furi_state_sub_alloc(state, callback, context);
     if(item_out) memcpy(item_out, state->item, state->item_size);
 
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
 
     return sub;
 }
@@ -154,11 +180,11 @@ void furi_state_unsubscribe(FuriStateSub* sub) {
     furi_check(sub);
     FuriState* state = sub->state;
 
-    furi_state_lock(state);
+    furi_state_lock_write(state);
 
     StateSubList_unlink(sub);
 
-    furi_state_unlock(state);
+    furi_state_unlock_write(state);
 
     free(sub);
 }
@@ -167,7 +193,7 @@ void furi_state_get(FuriState* state, void* item_out) {
     furi_check(state);
     furi_check(item_out);
 
-    furi_state_lock(state);
+    furi_state_lock_read(state);
     memcpy(item_out, state->item, state->item_size);
-    furi_state_unlock(state);
+    furi_state_unlock_read(state);
 }
