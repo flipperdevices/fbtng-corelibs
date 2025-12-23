@@ -1,7 +1,6 @@
 #include "flipper.h"
 #include <furi.h>
 #include <version/version.h>
-#include <furi_hal_version.h>
 #include <furi_hal_nvm.h>
 
 #include <FreeRTOS.h>
@@ -33,7 +32,7 @@ FURI_WEAK void flipper_init_services(void) {
 }
 
 void flipper_init(void) {
-    flipper_print_version("Firmware", furi_hal_version_get_firmware_version());
+    flipper_print_version("Firmware", version_get());
 
     FURI_LOG_I(TAG, "Boot mode %d", furi_hal_nvm_get_boot_mode());
 
