@@ -45,6 +45,10 @@ extern "C" {
 #define COUNT_OF(x) (sizeof(x) / sizeof(x[0]))
 #endif
 
+#ifndef SIZEOF_MEMBER
+#define SIZEOF_MEMBER(type, member) (sizeof(((type*)0)->member))
+#endif
+
 #ifndef FURI_SWAP
 #define FURI_SWAP(x, y)     \
     do {                    \
