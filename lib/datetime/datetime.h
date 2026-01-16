@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +36,7 @@ bool datetime_validate_datetime(DateTime* datetime);
  *
  * @return     UNIX Timestamp in seconds from UNIX epoch start
  */
-uint32_t datetime_datetime_to_timestamp(DateTime* datetime);
+time_t datetime_datetime_to_timestamp(DateTime* datetime);
 
 /** Convert UNIX timestamp to DateTime
  *
@@ -44,7 +45,7 @@ uint32_t datetime_datetime_to_timestamp(DateTime* datetime);
  * @param[in]  timestamp  UNIX Timestamp in seconds from UNIX epoch start
  * @param[out] datetime   The datetime (UTC)
  */
-void datetime_timestamp_to_datetime(uint32_t timestamp, DateTime* datetime);
+void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime);
 
 /** Gets the number of days in the year according to the Gregorian calendar.
  *

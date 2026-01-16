@@ -37,10 +37,10 @@ bool datetime_validate_datetime(DateTime* datetime) {
     return !invalid;
 }
 
-uint32_t datetime_datetime_to_timestamp(DateTime* datetime) {
+time_t datetime_datetime_to_timestamp(DateTime* datetime) {
     furi_check(datetime);
 
-    uint32_t timestamp = 0;
+    time_t timestamp = 0;
     uint8_t years = 0;
     uint8_t leap_years = 0;
 
@@ -69,10 +69,11 @@ uint32_t datetime_datetime_to_timestamp(DateTime* datetime) {
     return timestamp;
 }
 
-void datetime_timestamp_to_datetime(uint32_t timestamp, DateTime* datetime) {
+void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime) {
     furi_check(datetime);
-    uint32_t days = timestamp / SECONDS_PER_DAY;
-    uint32_t seconds_in_day = timestamp % SECONDS_PER_DAY;
+
+    time_t days = timestamp / SECONDS_PER_DAY;
+    time_t seconds_in_day = timestamp % SECONDS_PER_DAY;
 
     datetime->year = EPOCH_START_YEAR;
     datetime->weekday = ((days + 3) % 7) + 1;
