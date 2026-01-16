@@ -100,6 +100,15 @@ void furi_log_puthex32(uint32_t data);
 void furi_log_print_format(FuriLogLevel level, const char* tag, const char* format, ...)
     _ATTRIBUTE((__format__(__printf__, 3, 4)));
 
+/** Dump memory contents in HEX + ASCII form
+ * 
+ * @param level 
+ * @param tag 
+ * @param data  The data 
+ * @param size  The size
+ */
+void furi_log_hexdump(FuriLogLevel level, const char* tag, const uint8_t* data, size_t len);
+
 /** Print log record
  * 
  * @param level 
