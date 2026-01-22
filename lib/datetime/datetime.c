@@ -69,6 +69,11 @@ time_t datetime_datetime_to_timestamp(DateTime* datetime) {
     return timestamp;
 }
 
+time_t datetime_datetime_to_timestamp_ms(DateTime* datetime) {
+    time_t timestamp = datetime_datetime_to_timestamp(datetime);
+    return 1000 * timestamp + datetime->millis;
+}
+
 void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime) {
     furi_check(datetime);
 
@@ -95,6 +100,12 @@ void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime) {
     datetime->hour = seconds_in_day / SECONDS_PER_HOUR;
     datetime->minute = (seconds_in_day % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE;
     datetime->second = seconds_in_day % SECONDS_PER_MINUTE;
+    datetime->millis = 0;
+}
+
+void datetime_timestamp_ms_to_datetime(time_t timestamp, DateTime* datetime) {
+    datetime_timestamp_to_datetime(timestamp / 1000, datetime);
+    datetime->millis = timestamp % 1000;
 }
 
 uint16_t datetime_get_days_per_year(uint16_t year) {
