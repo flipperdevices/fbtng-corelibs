@@ -18,6 +18,7 @@ static const uint16_t datetime_days_per_year[] = {365, 366};
 bool datetime_validate_datetime(DateTime* datetime) {
     bool invalid = false;
 
+    invalid |= (datetime->millis > 999);
     invalid |= (datetime->second > 59);
     invalid |= (datetime->minute > 59);
     invalid |= (datetime->hour > 23);
