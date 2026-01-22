@@ -13,6 +13,7 @@ typedef struct {
     uint8_t hour; /**< Hour in 24H format: 0-23 */
     uint8_t minute; /**< Minute: 0-59 */
     uint8_t second; /**< Second: 0-59 */
+    uint16_t millis; /**< Millisecond: 0-999 */
     // Date
     uint8_t day; /**< Current day: 1-31 */
     uint8_t month; /**< Current month: 1-12 */
@@ -38,6 +39,16 @@ bool datetime_validate_datetime(DateTime* datetime);
  */
 time_t datetime_datetime_to_timestamp(DateTime* datetime);
 
+/** Convert DateTime to UNIX timestamp in milliseconds
+ *
+ * @warning    Mind timezone when perform conversion
+ *
+ * @param      datetime  The datetime (UTC)
+ *
+ * @return     UNIX Timestamp in milliseconds from UNIX epoch start
+ */
+time_t datetime_datetime_to_timestamp_ms(DateTime* datetime);
+
 /** Convert UNIX timestamp to DateTime
  *
  * @warning    Mind timezone when perform conversion
@@ -46,6 +57,15 @@ time_t datetime_datetime_to_timestamp(DateTime* datetime);
  * @param[out] datetime   The datetime (UTC)
  */
 void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime);
+
+/** Convert UNIX timestamp in milliseconds to DateTime
+ *
+ * @warning    Mind timezone when perform conversion
+ *
+ * @param[in]  timestamp  UNIX Timestamp in milliseconds from UNIX epoch start
+ * @param[out] datetime   The datetime (UTC)
+ */
+void datetime_timestamp_ms_to_datetime(time_t timestamp, DateTime* datetime);
 
 /** Gets the number of days in the year according to the Gregorian calendar.
  *
