@@ -128,7 +128,7 @@ void datetime_format_timestamp(const LocalTime *lt, char *buf) {
     uint8_t offset_m = 0;
     // In offset_t only hours can be negative, minutes are always positive.
     // For example, offset of -1:15 (-75 min) will be encoded as {-2,45}.
-    if(lt->offset.hours > 0) {
+    if(lt->offset.hours >= 0) {
         offset_h = lt->offset.hours;
         offset_m = lt->offset.minutes;
     } else {
