@@ -1,5 +1,6 @@
 #include "datetime.h"
 #include <furi.h>
+#include <ctype.h>
 
 #define TAG "DateTime"
 
@@ -119,4 +120,205 @@ bool datetime_is_leap_year(uint16_t year) {
 
 uint8_t datetime_get_days_per_month(bool leap_year, uint8_t month) {
     return datetime_days_per_month[leap_year ? 1 : 0][month - 1];
+}
+
+void datetime_format_timestamp(const LocalTime *lt, char *buf) {
+    char offset_sign = '+';
+    uint8_t offset_h = 0;
+    uint8_t offset_m = 0;
+    // In offset_t only hours can be negative, minutes are always positive.
+    // For example, offset of -1:15 (-75 min) will be encoded as {-2,45}.
+    if(lt->offset.hours > 0) {
+        offset_h = lt->offset.hours;
+        offset_m = lt->offset.minutes;
+    } else {
+        offset_sign = '-';
+        if(lt->offset.minutes == 0) {
+            offset_h = -lt->offset.hours;
+        } else {
+            offset_h = -lt->offset.hours - 1;
+            offset_m = 60 - lt->offset.minutes;
+        }
+    }
+    sprintf(buf, "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%c%02hhu:%02hhu",
+        lt->dt.year,
+        lt->dt.month,
+        lt->dt.day,
+        lt->dt.hour,
+        lt->dt.minute,
+        lt->dt.second,
+        offset_sign,
+        offset_h,
+        offset_m);
+}
+
+udatetime_t datetime_to_udatetime(const DateTime *dt) {
+    udatetime_t r = {
+        .date = {
+            .year = UYEAR_FROM_YEAR(dt->year),
+            .month = dt->month,
+            .dayofmonth = dt->day,
+            .dayofweek = dt->weekday
+        },
+        .time = {
+            .hour = dt->hour,
+            .minute = dt->minute,
+            .second = dt->second
+        }
+    };
+
+    return r;
+}
+
+DateTime datetime_from_udatetime(const udatetime_t *dt) {
+    DateTime r = {
+        .year = UYEAR_TO_YEAR(dt->date.year),
+        .month = dt->date.month,
+        .day = dt->date.dayofmonth,
+        .weekday = dt->date.dayofweek,
+        .hour = dt->time.hour,
+        .minute = dt->time.minute,
+        .second = dt->time.second,
+        .millis = 0,
+    };
+
+    return r;
+}
+
+static bool parse_int(const char **str, size_t width, unsigned int *result) {
+    unsigned int r = 0;
+    while(width > 0 && **str) {
+        int c = **str;
+        if(isdigit(c)) {
+            r = r * 10 + c - '0';
+        } else {
+            return false;
+        }
+        width -= 1;
+        *str += 1;
+    }
+    *result = r;
+    return true;
+}
+
+/** Parse date in ISO 8601 format.
+ * Accepted: YYYY-MM-DD or YYYYMMDD
+ */
+static bool parse_date(const char** str, udate_t *result) {
+    unsigned int y = 0, m = 0, d = 0;
+    bool hyphens = false;
+
+    if(!parse_int(str, 4, &y)) {
+        return false;
+    }
+    if(**str == '-') {
+        hyphens = true;
+        *str += 1;
+    }
+    if(!parse_int(str, 2, &m)) {
+        return false;
+    }
+    if(**str == '-' && !hyphens) {
+        return false;
+    }
+    *str += hyphens ? 1 : 0;
+    if(!parse_int(str, 2, &d)) {
+        return false;
+    }
+    return utz_date_init_checked(y, m, d, result);
+}
+
+/** Parse time in ISO 8601 format.
+ * Accepted: Thh:mm:ss or Thhmmss
+ */
+static bool parse_time(const char** str, utime_t *result) {
+    unsigned int h = 0, m = 0, s = 0;
+
+    if(**str != 'T') {
+        return false;
+    }
+    *str += 1;
+
+    bool hyphens = false;
+
+    if(!parse_int(str, 2, &h)) {
+        return false;
+    }
+    if(**str == ':') {
+        hyphens = true;
+        *str += 1;
+    }
+    if(!parse_int(str, 2, &m)) {
+        return false;
+    }
+    if(**str == ':' && !hyphens) {
+        return false;
+    }
+    *str += hyphens ? 1 : 0;
+    if(!parse_int(str, 2, &s)) {
+        return false;
+    }
+
+    return utz_time_init_checked(h, m, s, result);
+}
+
+/** Parse timezone offset in ISO 8601 format.
+ * Accepted: Z, ±hh:mm, ±hhmm, ±hh
+ */
+static bool parse_offset(const char* str, uoffset_t *result) {
+    bool negative = false;
+    unsigned int h = 0, m = 0;
+
+    if(*str == 'Z') {
+        // UTC
+        str += 1;
+    } else {
+        // sign
+        if(*str == '-') {
+            negative = true;
+        } else if(*str != '+') {
+            return false;
+        }
+        str += 1;
+
+        // hours
+        if(!parse_int(&str, 2, &h)) {
+            return false;
+        }
+        if(*str == ':') {
+            str += 1;
+        }
+        if(*str != 0) {
+            // minutes
+            if(!parse_int(&str, 2, &m)) {
+                return false;
+            }
+        }
+    }
+    if(*str == 0) {
+        *result = utz_offset_init(negative, h, m);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool datetime_parse_timestamp(const char* str, DateTime *result) {
+    udatetime_t dt;
+    if(!parse_date(&str, &dt.date)) {
+        return false;
+    }
+    if(!parse_time(&str, &dt.time)) {
+        return false;
+    }
+    uoffset_t offset;
+    if(!parse_offset(str, &offset)) {
+        return false;
+    }
+
+    udatetime_t utc_dt = utz_udatetime_sub(&dt, &offset);
+
+    *result = datetime_from_udatetime(&utc_dt);
+
+    return true;
 }

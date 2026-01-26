@@ -3,10 +3,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <utz/utz.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define DATETIME_TIMESTAMP_STR_LEN 25
 
 typedef struct {
     // Time
@@ -20,6 +23,11 @@ typedef struct {
     uint16_t year; /**< Current year: 2000-2099 */
     uint8_t weekday; /**< Current weekday: 1-7 */
 } DateTime;
+
+typedef struct {
+    DateTime dt; ///< Local time
+    uoffset_t offset; ///< Offset from UTC
+} LocalTime;
 
 /** Validate Date Time
  *
@@ -90,6 +98,39 @@ bool datetime_is_leap_year(uint16_t year);
  * @return the number of days in the month
  */
 uint8_t datetime_get_days_per_month(bool leap_year, uint8_t month);
+
+/** Format ISO 8601 timestamp: YYYY-MM-DDThh:mm:ss±hh:mm
+ *
+ * @param[in] lt local time.
+ * @param[out] buf string buffer. Must hold at least (DATETIME_TIMESTAMP_STR_LEN+1) bytes.
+ */
+void datetime_format_timestamp(const LocalTime *lt, char* buf);
+
+/** Parse ISO 8601 timestamp.
+ *
+ * Timestamp must be in following format:
+ *  [DATE][TIME][ZONE]
+ * The following DATE formats are supported:
+ *  YYYY-MM-DD
+ *  YYYYMMDD
+ * The following TIME formats are supported:
+ *  Thh:mm:ss
+ *  Thhmmss
+ * The following ZONE formats are supported:
+ *  Z - UTC
+ *  ±hh:mm
+ *  ±hhmm
+ *
+ * @param[in] str timestamp string.
+ * @param[out] result timestamp (UTC).
+ * @return true on success.
+ */
+bool datetime_parse_timestamp(const char* str, DateTime *result);
+
+udatetime_t datetime_to_udatetime(const DateTime *dt);
+
+DateTime datetime_from_udatetime(const udatetime_t *dt);
+
 
 #ifdef __cplusplus
 }
