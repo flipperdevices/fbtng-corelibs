@@ -26,7 +26,7 @@ typedef struct {
 
 typedef struct {
     DateTime dt; ///< Local time
-    uoffset_t offset; ///< Offset from UTC
+    utz_offset_t offset; ///< Offset from UTC
 } LocalTime;
 
 /** Validate Date Time
@@ -127,9 +127,9 @@ void datetime_format_timestamp(const LocalTime *lt, char* buf);
  */
 bool datetime_parse_timestamp(const char* str, DateTime *result);
 
-udatetime_t datetime_to_udatetime(const DateTime *dt);
+utz_datetime_t datetime_to_udatetime(const DateTime *dt);
 
-DateTime datetime_from_udatetime(const udatetime_t *dt);
+DateTime datetime_from_udatetime(const utz_datetime_t *dt);
 
 
 #ifdef __cplusplus

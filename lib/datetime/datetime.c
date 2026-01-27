@@ -152,10 +152,10 @@ void datetime_format_timestamp(const LocalTime *lt, char *buf) {
         offset_m);
 }
 
-udatetime_t datetime_to_udatetime(const DateTime *dt) {
-    udatetime_t r = {
+utz_datetime_t datetime_to_udatetime(const DateTime *dt) {
+    utz_datetime_t r = {
         .date = {
-            .year = UYEAR_FROM_YEAR(dt->year),
+            .year = dt->year,
             .month = dt->month,
             .dayofmonth = dt->day,
             .dayofweek = dt->weekday
@@ -170,9 +170,9 @@ udatetime_t datetime_to_udatetime(const DateTime *dt) {
     return r;
 }
 
-DateTime datetime_from_udatetime(const udatetime_t *dt) {
+DateTime datetime_from_udatetime(const utz_datetime_t *dt) {
     DateTime r = {
-        .year = UYEAR_TO_YEAR(dt->date.year),
+        .year = dt->date.year,
         .month = dt->date.month,
         .day = dt->date.dayofmonth,
         .weekday = dt->date.dayofweek,
@@ -204,7 +204,7 @@ static bool parse_int(const char **str, size_t width, unsigned int *result) {
 /** Parse date in ISO 8601 format.
  * Accepted: YYYY-MM-DD or YYYYMMDD
  */
-static bool parse_date(const char** str, udate_t *result) {
+static bool parse_date(const char** str, utz_date_t *result) {
     unsigned int y = 0, m = 0, d = 0;
     bool hyphens = false;
 
@@ -231,7 +231,7 @@ static bool parse_date(const char** str, udate_t *result) {
 /** Parse time in ISO 8601 format.
  * Accepted: Thh:mm:ss or Thhmmss
  */
-static bool parse_time(const char** str, utime_t *result) {
+static bool parse_time(const char** str, utz_time_t *result) {
     unsigned int h = 0, m = 0, s = 0;
 
     if(**str != 'T') {
@@ -265,7 +265,7 @@ static bool parse_time(const char** str, utime_t *result) {
 /** Parse timezone offset in ISO 8601 format.
  * Accepted: Z, ±hh:mm, ±hhmm, ±hh
  */
-static bool parse_offset(const char* str, uoffset_t *result) {
+static bool parse_offset(const char* str, utz_offset_t *result) {
     bool negative = false;
     unsigned int h = 0, m = 0;
 
@@ -304,19 +304,19 @@ static bool parse_offset(const char* str, uoffset_t *result) {
 }
 
 bool datetime_parse_timestamp(const char* str, DateTime *result) {
-    udatetime_t dt;
+    utz_datetime_t dt;
     if(!parse_date(&str, &dt.date)) {
         return false;
     }
     if(!parse_time(&str, &dt.time)) {
         return false;
     }
-    uoffset_t offset;
+    utz_offset_t offset;
     if(!parse_offset(str, &offset)) {
         return false;
     }
 
-    udatetime_t utc_dt = utz_udatetime_sub(&dt, &offset);
+    utz_datetime_t utc_dt = utz_udatetime_sub(&dt, &offset);
 
     *result = datetime_from_udatetime(&utc_dt);
 
