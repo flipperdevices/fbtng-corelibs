@@ -16,30 +16,7 @@ static const uint8_t datetime_days_per_month[2][MONTHS_COUNT] = {
 
 static const uint16_t datetime_days_per_year[] = {365, 366};
 
-bool datetime_validate_datetime(DateTime* datetime) {
-    bool invalid = false;
-
-    invalid |= (datetime->millis > 999);
-    invalid |= (datetime->second > 59);
-    invalid |= (datetime->minute > 59);
-    invalid |= (datetime->hour > 23);
-
-    invalid |= (datetime->year < 2000);
-    invalid |= (datetime->year > 2099);
-
-    invalid |= (datetime->month == 0);
-    invalid |= (datetime->month > 12);
-
-    invalid |= (datetime->day == 0);
-    invalid |= (datetime->day > 31);
-
-    invalid |= (datetime->weekday == 0);
-    invalid |= (datetime->weekday > 7);
-
-    return !invalid;
-}
-
-time_t datetime_datetime_to_timestamp(DateTime* datetime) {
+time_t datetime_datetime_to_timestamp(const DateTime* datetime) {
     furi_check(datetime);
 
     time_t timestamp = 0;
@@ -63,7 +40,7 @@ time_t datetime_datetime_to_timestamp(DateTime* datetime) {
         timestamp += datetime_get_days_per_month(leap_year, m) * SECONDS_PER_DAY;
     }
 
-    timestamp += (datetime->day - 1) * SECONDS_PER_DAY;
+    timestamp += (datetime->dayofmonth - 1) * SECONDS_PER_DAY;
     timestamp += datetime->hour * SECONDS_PER_HOUR;
     timestamp += datetime->minute * SECONDS_PER_MINUTE;
     timestamp += datetime->second;
@@ -71,43 +48,50 @@ time_t datetime_datetime_to_timestamp(DateTime* datetime) {
     return timestamp;
 }
 
-time_t datetime_datetime_to_timestamp_ms(DateTime* datetime) {
-    time_t timestamp = datetime_datetime_to_timestamp(datetime);
+time_t datetime_datetime_to_timestamp_ms(const DateTimeMs* datetime) {
+    time_t timestamp = datetime_datetime_to_timestamp(&datetime->dt);
     return 1000 * timestamp + datetime->millis;
 }
 
-void datetime_timestamp_to_datetime(time_t timestamp, DateTime* datetime) {
-    furi_check(datetime);
-
+DateTime datetime_timestamp_to_datetime(time_t timestamp) {
     time_t days = timestamp / SECONDS_PER_DAY;
     time_t seconds_in_day = timestamp % SECONDS_PER_DAY;
 
-    datetime->year = EPOCH_START_YEAR;
-    datetime->weekday = ((days + 3) % 7) + 1;
+    uint16_t year = EPOCH_START_YEAR;
 
-    while(days >= datetime_get_days_per_year(datetime->year)) {
-        days -= datetime_get_days_per_year(datetime->year);
-        (datetime->year)++;
+    while(days >= datetime_get_days_per_year(year)) {
+        days -= datetime_get_days_per_year(year);
+        year++;
     }
 
-    datetime->month = 1;
+    uint8_t month = 1;
     while(days >=
-          datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month)) {
+          datetime_get_days_per_month(datetime_is_leap_year(year), month)) {
         days -=
-            datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month);
-        (datetime->month)++;
+            datetime_get_days_per_month(datetime_is_leap_year(year), month);
+        month++;
     }
 
-    datetime->day = days + 1;
-    datetime->hour = seconds_in_day / SECONDS_PER_HOUR;
-    datetime->minute = (seconds_in_day % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE;
-    datetime->second = seconds_in_day % SECONDS_PER_MINUTE;
-    datetime->millis = 0;
+    uint16_t hour = seconds_in_day / SECONDS_PER_HOUR;
+    uint16_t minute = (seconds_in_day % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE;
+    uint16_t second = seconds_in_day % SECONDS_PER_MINUTE;
+
+    return (DateTime){
+        .date = utz_date_init(year, month, days + 1),
+        .time = {
+            .hour = hour,
+            .minute = minute,
+            .second = second
+        }
+    };
 }
 
-void datetime_timestamp_ms_to_datetime(time_t timestamp, DateTime* datetime) {
-    datetime_timestamp_to_datetime(timestamp / 1000, datetime);
-    datetime->millis = timestamp % 1000;
+DateTimeMs datetime_timestamp_ms_to_datetime(time_t timestamp) {
+    DateTime dt = datetime_timestamp_to_datetime(timestamp / 1000);
+    return (DateTimeMs){
+        .dt = dt,
+        .millis = timestamp % 1000
+    };
 }
 
 uint16_t datetime_get_days_per_year(uint16_t year) {
@@ -143,46 +127,13 @@ void datetime_format_timestamp(const LocalTime *lt, char *buf) {
     sprintf(buf, "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%c%02hhu:%02hhu",
         lt->dt.year,
         lt->dt.month,
-        lt->dt.day,
+        lt->dt.dayofmonth,
         lt->dt.hour,
         lt->dt.minute,
         lt->dt.second,
         offset_sign,
         offset_h,
         offset_m);
-}
-
-utz_datetime_t datetime_to_udatetime(const DateTime *dt) {
-    utz_datetime_t r = {
-        .date = {
-            .year = dt->year,
-            .month = dt->month,
-            .dayofmonth = dt->day,
-            .dayofweek = dt->weekday
-        },
-        .time = {
-            .hour = dt->hour,
-            .minute = dt->minute,
-            .second = dt->second
-        }
-    };
-
-    return r;
-}
-
-DateTime datetime_from_udatetime(const utz_datetime_t *dt) {
-    DateTime r = {
-        .year = dt->date.year,
-        .month = dt->date.month,
-        .day = dt->date.dayofmonth,
-        .weekday = dt->date.dayofweek,
-        .hour = dt->time.hour,
-        .minute = dt->time.minute,
-        .second = dt->time.second,
-        .millis = 0,
-    };
-
-    return r;
 }
 
 static bool parse_int(const char **str, size_t width, unsigned int *result) {
@@ -316,9 +267,7 @@ bool datetime_parse_timestamp(const char* str, DateTime *result) {
         return false;
     }
 
-    utz_datetime_t utc_dt = utz_udatetime_sub(&dt, &offset);
-
-    *result = datetime_from_udatetime(&utc_dt);
+    *result = utz_udatetime_sub(&dt, &offset);
 
     return true;
 }
