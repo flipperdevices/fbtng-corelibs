@@ -71,7 +71,8 @@ bool furi_record_exists(const char* name) {
     bool ret = false;
 
     furi_record_lock();
-    ret = (furi_record_get(name) != NULL);
+    FuriRecordData* record_data = furi_record_get(name);
+    ret = record_data && (furi_event_flag_get(record_data->flags) & FURI_RECORD_FLAG_READY);
     furi_record_unlock();
 
     return ret;
