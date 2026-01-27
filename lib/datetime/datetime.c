@@ -65,10 +65,8 @@ DateTime datetime_timestamp_to_datetime(time_t timestamp) {
     }
 
     uint8_t month = 1;
-    while(days >=
-          datetime_get_days_per_month(datetime_is_leap_year(year), month)) {
-        days -=
-            datetime_get_days_per_month(datetime_is_leap_year(year), month);
+    while(days >= datetime_get_days_per_month(datetime_is_leap_year(year), month)) {
+        days -= datetime_get_days_per_month(datetime_is_leap_year(year), month);
         month++;
     }
 
@@ -78,20 +76,12 @@ DateTime datetime_timestamp_to_datetime(time_t timestamp) {
 
     return (DateTime){
         .date = utz_date_init(year, month, days + 1),
-        .time = {
-            .hour = hour,
-            .minute = minute,
-            .second = second
-        }
-    };
+        .time = {.hour = hour, .minute = minute, .second = second}};
 }
 
 DateTimeMs datetime_timestamp_ms_to_datetime(time_t timestamp) {
     DateTime dt = datetime_timestamp_to_datetime(timestamp / 1000);
-    return (DateTimeMs){
-        .dt = dt,
-        .millis = timestamp % 1000
-    };
+    return (DateTimeMs){.dt = dt, .millis = timestamp % 1000};
 }
 
 uint16_t datetime_get_days_per_year(uint16_t year) {
@@ -106,7 +96,7 @@ uint8_t datetime_get_days_per_month(bool leap_year, uint8_t month) {
     return datetime_days_per_month[leap_year ? 1 : 0][month - 1];
 }
 
-void datetime_format_timestamp(const LocalTime *lt, char *buf) {
+void datetime_format_timestamp(const LocalTime* lt, char* buf) {
     char offset_sign = '+';
     uint8_t offset_h = 0;
     uint8_t offset_m = 0;
@@ -124,7 +114,9 @@ void datetime_format_timestamp(const LocalTime *lt, char *buf) {
             offset_m = 60 - lt->offset.minutes;
         }
     }
-    sprintf(buf, "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%c%02hhu:%02hhu",
+    sprintf(
+        buf,
+        "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%c%02hhu:%02hhu",
         lt->dt.year,
         lt->dt.month,
         lt->dt.dayofmonth,
@@ -136,7 +128,7 @@ void datetime_format_timestamp(const LocalTime *lt, char *buf) {
         offset_m);
 }
 
-static bool parse_int(const char **str, size_t width, unsigned int *result) {
+static bool parse_int(const char** str, size_t width, unsigned int* result) {
     unsigned int r = 0;
     while(width > 0 && **str) {
         int c = **str;
@@ -155,7 +147,7 @@ static bool parse_int(const char **str, size_t width, unsigned int *result) {
 /** Parse date in ISO 8601 format.
  * Accepted: YYYY-MM-DD or YYYYMMDD
  */
-static bool parse_date(const char** str, utz_date_t *result) {
+static bool parse_date(const char** str, utz_date_t* result) {
     unsigned int y = 0, m = 0, d = 0;
     bool hyphens = false;
 
@@ -182,7 +174,7 @@ static bool parse_date(const char** str, utz_date_t *result) {
 /** Parse time in ISO 8601 format.
  * Accepted: Thh:mm:ss or Thhmmss
  */
-static bool parse_time(const char** str, utz_time_t *result) {
+static bool parse_time(const char** str, utz_time_t* result) {
     unsigned int h = 0, m = 0, s = 0;
 
     if(**str != 'T') {
@@ -216,7 +208,7 @@ static bool parse_time(const char** str, utz_time_t *result) {
 /** Parse timezone offset in ISO 8601 format.
  * Accepted: Z, ±hh:mm, ±hhmm, ±hh
  */
-static bool parse_offset(const char* str, utz_offset_t *result) {
+static bool parse_offset(const char* str, utz_offset_t* result) {
     bool negative = false;
     unsigned int h = 0, m = 0;
 
@@ -254,7 +246,7 @@ static bool parse_offset(const char* str, utz_offset_t *result) {
     }
 }
 
-bool datetime_parse_timestamp(const char* str, DateTime *result) {
+bool datetime_parse_timestamp(const char* str, DateTime* result) {
     utz_datetime_t dt;
     if(!parse_date(&str, &dt.date)) {
         return false;

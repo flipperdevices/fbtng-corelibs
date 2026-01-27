@@ -90,7 +90,7 @@ uint8_t datetime_get_days_per_month(bool leap_year, uint8_t month);
  * @param[in] lt local time.
  * @param[out] buf string buffer. Must hold at least (DATETIME_TIMESTAMP_STR_LEN+1) bytes.
  */
-void datetime_format_timestamp(const LocalTime *lt, char* buf);
+void datetime_format_timestamp(const LocalTime* lt, char* buf);
 
 /** Parse ISO 8601 timestamp.
  *
@@ -111,7 +111,7 @@ void datetime_format_timestamp(const LocalTime *lt, char* buf);
  * @param[out] result timestamp (UTC).
  * @return true on success.
  */
-bool datetime_parse_timestamp(const char* str, DateTime *result);
+bool datetime_parse_timestamp(const char* str, DateTime* result);
 
 #ifdef __cplusplus
 }
