@@ -96,36 +96,44 @@ uint8_t datetime_get_days_per_month(bool leap_year, uint8_t month) {
     return datetime_days_per_month[leap_year ? 1 : 0][month - 1];
 }
 
-void datetime_format_timestamp(const LocalTime* lt, char* buf) {
+void datetime_format_offset(const utz_offset_t* offset, char* buf) {
     char offset_sign = '+';
     uint8_t offset_h = 0;
     uint8_t offset_m = 0;
     // In offset_t only hours can be negative, minutes are always positive.
     // For example, offset of -1:15 (-75 min) will be encoded as {-2,45}.
-    if(lt->offset.hours >= 0) {
-        offset_h = lt->offset.hours;
-        offset_m = lt->offset.minutes;
+    if(offset->hours >= 0) {
+        offset_h = offset->hours;
+        offset_m = offset->minutes;
     } else {
         offset_sign = '-';
-        if(lt->offset.minutes == 0) {
-            offset_h = -lt->offset.hours;
+        if(offset->minutes == 0) {
+            offset_h = -offset->hours;
         } else {
-            offset_h = -lt->offset.hours - 1;
-            offset_m = 60 - lt->offset.minutes;
+            offset_h = -offset->hours - 1;
+            offset_m = 60 - offset->minutes;
         }
     }
-    sprintf(
+    snprintf(buf, DATETIME_OFFSET_STR_LEN + 1, "%c%02hhu:%02hhu",
+        offset_sign,
+        offset_h,
+        offset_m);
+}
+
+void datetime_format_timestamp(const LocalTime* lt, char* buf) {
+    char offset_buf[DATETIME_OFFSET_STR_LEN + 1];
+    datetime_format_offset(&lt->offset, offset_buf);
+    snprintf(
         buf,
-        "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%c%02hhu:%02hhu",
+        DATETIME_TIMESTAMP_STR_LEN + 1,
+        "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%7s",
         lt->dt.year,
         lt->dt.month,
         lt->dt.dayofmonth,
         lt->dt.hour,
         lt->dt.minute,
         lt->dt.second,
-        offset_sign,
-        offset_h,
-        offset_m);
+        offset_buf);
 }
 
 static bool parse_int(const char** str, size_t width, unsigned int* result) {
