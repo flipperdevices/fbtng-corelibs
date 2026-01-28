@@ -123,7 +123,7 @@ void datetime_format_timestamp(const LocalTime* lt, char* buf) {
     snprintf(
         buf,
         DATETIME_TIMESTAMP_STR_LEN + 1,
-        "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%7s",
+        "%04hu-%02hhu-%02hhuT%02hhu:%02hhu:%02hhu%6s",
         lt->dt.year,
         lt->dt.month,
         lt->dt.dayofmonth,
