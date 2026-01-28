@@ -57,6 +57,9 @@ task.h is included from an application file. */
 
 #undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
+/* Uncomment this to force memmgr check heap on each pvPortMalloc/vPortFree */
+// #define MEMMGR_DEBUG_HEAP_CHECK
+
 /* Allocation tracking types */
 DICT_DEF2(MemmgrHeapAllocDict, uint32_t, uint32_t) //-V1048
 
@@ -353,6 +356,10 @@ void memmgr_heap_check(void) {
         while(pxBlock->pxNextFreeBlock != NULL) {
             furi_assert((void*)pxBlock >= heap_region->start);
             furi_assert((void*)pxBlock < heap_region->start + heap_region->size_bytes);
+
+            furi_assert(pxBlock->xBlockSize >= xHeapStructSize);
+            furi_assert((pxBlock->xBlockSize - xHeapStructSize) < heap_region->size_bytes);
+
             pxBlock = pxBlock->pxNextFreeBlock;
         }
     }
@@ -419,7 +426,11 @@ void* pvPortMalloc(size_t xWantedSize) {
     } else {
         mtCOVERAGE_TEST_MARKER();
     }
+
+#ifdef MEMMGR_DEBUG_HEAP_CHECK
     memmgr_heap_check();
+#endif
+
     vTaskSuspendAll();
     {
         /* Check the requested block size is not so large that the top bit is
@@ -538,7 +549,9 @@ void* pvPortMalloc(size_t xWantedSize) {
     furi_check(pvReturn, xWantedSize ? "out of memory" : "malloc(0)");
     pvReturn = memset(pvReturn, 0, to_wipe);
 
+#ifdef MEMMGR_DEBUG_HEAP_CHECK
     memmgr_heap_check();
+#endif
 
     return pvReturn;
 }
@@ -547,7 +560,11 @@ void* pvPortMalloc(size_t xWantedSize) {
 void vPortFree(void* pv) {
     uint8_t* puc = (uint8_t*)pv;
     BlockLink_t* pxLink;
+
+#ifdef MEMMGR_DEBUG_HEAP_CHECK
     memmgr_heap_check();
+#endif
+
     if(FURI_IS_IRQ_MODE()) {
         furi_crash("memmgt in ISR");
     }
@@ -599,7 +616,9 @@ void vPortFree(void* pv) {
         print_heap_free(pv);
 #endif
     }
+#ifdef MEMMGR_DEBUG_HEAP_CHECK
     memmgr_heap_check();
+#endif
 }
 /*-----------------------------------------------------------*/
 
