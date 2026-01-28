@@ -318,7 +318,7 @@ static void print_heap_malloc(void* ptr, size_t size) {
     ultoa((unsigned long)ptr, tmp_str, 16);
     furi_log_puts(tmp_str);
     furi_log_puts("|");
-    utoa(size, tmp_str, 10);
+    ultoa(size, tmp_str, 10);
     furi_log_puts(tmp_str);
     furi_log_puts("}\r\n");
     FURI_CRITICAL_EXIT();
@@ -419,7 +419,7 @@ void* pvPortMalloc(size_t xWantedSize) {
     } else {
         mtCOVERAGE_TEST_MARKER();
     }
-    //memmgr_heap_check();
+    memmgr_heap_check();
     vTaskSuspendAll();
     {
         /* Check the requested block size is not so large that the top bit is
@@ -538,7 +538,7 @@ void* pvPortMalloc(size_t xWantedSize) {
     furi_check(pvReturn, xWantedSize ? "out of memory" : "malloc(0)");
     pvReturn = memset(pvReturn, 0, to_wipe);
 
-    //memmgr_heap_check();
+    memmgr_heap_check();
 
     return pvReturn;
 }
@@ -547,7 +547,7 @@ void* pvPortMalloc(size_t xWantedSize) {
 void vPortFree(void* pv) {
     uint8_t* puc = (uint8_t*)pv;
     BlockLink_t* pxLink;
-    //memmgr_heap_check();
+    memmgr_heap_check();
     if(FURI_IS_IRQ_MODE()) {
         furi_crash("memmgt in ISR");
     }
@@ -599,7 +599,7 @@ void vPortFree(void* pv) {
         print_heap_free(pv);
 #endif
     }
-   // memmgr_heap_check();
+    memmgr_heap_check();
 }
 /*-----------------------------------------------------------*/
 
