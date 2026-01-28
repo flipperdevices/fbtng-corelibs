@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 #define DATETIME_TIMESTAMP_STR_LEN 26
-#define DATETIME_OFFSET_STR_LEN 7
+#define DATETIME_OFFSET_STR_LEN    7
 
 typedef utz_datetime_t DateTime;
 
@@ -99,7 +99,6 @@ void datetime_format_timestamp(const LocalTime* lt, char* buf);
  * @param[out] buf string buffer. Must hold at least (DATETIME_OFFSET_STR_LEN+1) bytes.
  */
 void datetime_format_offset(const utz_offset_t* offset, char* buf);
-
 
 /** Parse ISO 8601 timestamp.
  *

@@ -114,10 +114,7 @@ void datetime_format_offset(const utz_offset_t* offset, char* buf) {
             offset_m = 60 - offset->minutes;
         }
     }
-    snprintf(buf, DATETIME_OFFSET_STR_LEN + 1, "%c%02hhu:%02hhu",
-        offset_sign,
-        offset_h,
-        offset_m);
+    snprintf(buf, DATETIME_OFFSET_STR_LEN + 1, "%c%02hhu:%02hhu", offset_sign, offset_h, offset_m);
 }
 
 void datetime_format_timestamp(const LocalTime* lt, char* buf) {
