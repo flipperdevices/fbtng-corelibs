@@ -126,11 +126,14 @@ static size_t xBlockAllocatedBit = 0;
 
 /* Thread allocation tracing storage */
 static MemmgrHeapThreadDict_t memmgr_heap_thread_dict = {0};
+static bool memmgr_heap_thread_dict_initialized = false;
 static volatile uint32_t memmgr_heap_thread_trace_depth = 0;
 
 /* Initialize tracing storage on start */
 static void memmgr_heap_init_trace(void) {
+    furi_check(!memmgr_heap_thread_dict_initialized);
     MemmgrHeapThreadDict_init(memmgr_heap_thread_dict);
+    memmgr_heap_thread_dict_initialized = true;
 }
 
 void memmgr_heap_enable_thread_trace(FuriThreadId thread_id) {
@@ -341,6 +344,52 @@ static void print_heap_free(void* ptr) {
 #endif
 /*-----------------------------------------------------------*/
 
+void memmgr_heap_check(void) {
+    BlockLink_t* pxBlock;
+
+    vTaskSuspendAll();
+    {
+        pxBlock = xStart.pxNextFreeBlock;
+        while(pxBlock->pxNextFreeBlock != NULL) {
+            furi_assert((void*)pxBlock >= heap_region->start);
+            furi_assert((void*)pxBlock < heap_region->start + heap_region->size_bytes);
+            pxBlock = pxBlock->pxNextFreeBlock;
+        }
+    }
+    (void)xTaskResumeAll();
+    if(!memmgr_heap_thread_dict_initialized || memmgr_heap_thread_trace_depth != 0) return;
+
+    vTaskSuspendAll();
+    {
+        MemmgrHeapThreadDict_it_t thread_dict_it;
+        for(MemmgrHeapThreadDict_it(thread_dict_it, memmgr_heap_thread_dict);
+            !MemmgrHeapThreadDict_end_p(thread_dict_it);
+            MemmgrHeapThreadDict_next(thread_dict_it)) {
+            MemmgrHeapThreadDict_itref_t* thread_data = MemmgrHeapThreadDict_ref(thread_dict_it);
+
+            MemmgrHeapAllocDict_t* alloc_dict = &thread_data->value;
+            if(alloc_dict) {
+                MemmgrHeapAllocDict_it_t alloc_dict_it;
+                for(MemmgrHeapAllocDict_it(alloc_dict_it, *alloc_dict);
+                    !MemmgrHeapAllocDict_end_p(alloc_dict_it);
+                    MemmgrHeapAllocDict_next(alloc_dict_it)) {
+                    MemmgrHeapAllocDict_itref_t* data = MemmgrHeapAllocDict_ref(alloc_dict_it);
+                    if(data->key != 0) {
+                        uint8_t* puc = (uint8_t*)data->key;
+                        puc -= xHeapStructSize;
+                        BlockLink_t* pxLink = (void*)puc;
+
+                        furi_assert((void*)pxLink >= heap_region->start);
+                        furi_assert((void*)pxLink < heap_region->start + heap_region->size_bytes);
+                        furi_assert(pxLink->xBlockSize & xBlockAllocatedBit);
+                    }
+                }
+            }
+        }
+    }
+    (void)xTaskResumeAll();
+}
+
 void* pvPortMalloc(size_t xWantedSize) {
     BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
     void* pvReturn = NULL;
@@ -370,7 +419,7 @@ void* pvPortMalloc(size_t xWantedSize) {
     } else {
         mtCOVERAGE_TEST_MARKER();
     }
-
+    //memmgr_heap_check();
     vTaskSuspendAll();
     {
         /* Check the requested block size is not so large that the top bit is
@@ -488,6 +537,9 @@ void* pvPortMalloc(size_t xWantedSize) {
 
     furi_check(pvReturn, xWantedSize ? "out of memory" : "malloc(0)");
     pvReturn = memset(pvReturn, 0, to_wipe);
+
+    //memmgr_heap_check();
+
     return pvReturn;
 }
 /*-----------------------------------------------------------*/
@@ -495,7 +547,7 @@ void* pvPortMalloc(size_t xWantedSize) {
 void vPortFree(void* pv) {
     uint8_t* puc = (uint8_t*)pv;
     BlockLink_t* pxLink;
-
+    //memmgr_heap_check();
     if(FURI_IS_IRQ_MODE()) {
         furi_crash("memmgt in ISR");
     }
@@ -547,6 +599,7 @@ void vPortFree(void* pv) {
         print_heap_free(pv);
 #endif
     }
+   // memmgr_heap_check();
 }
 /*-----------------------------------------------------------*/
 
