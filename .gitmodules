@@ -1,3 +1,6 @@
 [submodule "lib/mlib"]
 	path = lib/mlib
 	url = https://github.com/P-p-H-d/mlib.git
+[submodule "lib/utz"]
+	path = lib/utz
+	url = https://github.com/flipperdevices/utz.git
