@@ -7,6 +7,8 @@
 
 #define TAG "Flipper"
 
+#define HEAP_CANARY_VALUE 0x8BADF00D
+
 static void flipper_print_version(const char* target, const Version* version) {
     if(version) {
         FURI_LOG_I(
@@ -39,4 +41,8 @@ void flipper_init(void) {
     flipper_init_services();
 
     FURI_LOG_I(TAG, "Startup complete");
+}
+
+void vApplicationGetRandomHeapCanary(portPOINTER_SIZE_TYPE* pxHeapCanary) {
+    *pxHeapCanary = HEAP_CANARY_VALUE;
 }
