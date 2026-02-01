@@ -382,12 +382,13 @@ static void print_heap_free(void* ptr) {
 #endif
 /*-----------------------------------------------------------*/
 
+#ifdef MEMMGR_DEBUG_HEAP_CHECK
+#pragma GCC push_options
+#pragma GCC optimize("O0")
 void memmgr_heap_check(void) {
     BlockLink_t* pxBlock;
 
     vTaskSuspendAll();
-#pragma GCC push_options
-#pragma GCC optimize("O0")
     {
         pxBlock = heapPROTECT_BLOCK_POINTER(xStart.pxNextFreeBlock);
         while(heapPROTECT_BLOCK_POINTER(pxBlock->pxNextFreeBlock) != NULL) {
@@ -400,7 +401,6 @@ void memmgr_heap_check(void) {
             pxBlock = heapPROTECT_BLOCK_POINTER(pxBlock->pxNextFreeBlock);
         }
     }
-#pragma GCC pop_options
     (void)xTaskResumeAll();
     if(!memmgr_heap_thread_dict_initialized || memmgr_heap_thread_trace_depth != 0) return;
 
@@ -434,6 +434,8 @@ void memmgr_heap_check(void) {
     }
     (void)xTaskResumeAll();
 }
+#pragma GCC pop_options
+#endif
 
 void* pvPortMalloc(size_t xWantedSize) {
     BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
