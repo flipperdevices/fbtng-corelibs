@@ -121,6 +121,20 @@ void datetime_format_offset(const utz_offset_t* offset, char* buf);
  */
 bool datetime_parse_timestamp(const char* str, DateTime* result);
 
+/** Get short name of month (3-letter abbreviation).
+ *
+ * @param month month number, where 1 = January
+ * @return pointer to static string "Jan", "Feb", etc. Returns NULL for invalid month.
+ */
+const char* datetime_get_month_short_name(uint8_t month);
+
+/** Get short name of weekday (3-letter abbreviation).
+ *
+ * @param dayofweek day of week, where 1 = Monday, 7 = Sunday
+ * @return pointer to static string "Mon", "Tue", etc. Returns NULL for invalid day.
+ */
+const char* datetime_get_weekday_short_name(uint8_t dayofweek);
+
 #ifdef __cplusplus
 }
 #endif

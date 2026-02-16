@@ -7,12 +7,19 @@
 #define SECONDS_PER_MINUTE 60
 #define SECONDS_PER_HOUR   (SECONDS_PER_MINUTE * 60)
 #define SECONDS_PER_DAY    (SECONDS_PER_HOUR * 24)
+#define WEEKDAYS_COUNT     7
 #define MONTHS_COUNT       12
 #define EPOCH_START_YEAR   1970
 
 static const uint8_t datetime_days_per_month[2][MONTHS_COUNT] = {
     {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
     {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+
+static const char* const datetime_month_short_names[MONTHS_COUNT] =
+    {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+static const char* const datetime_weekday_short_names[WEEKDAYS_COUNT] =
+    {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
 
 static const uint16_t datetime_days_per_year[] = {365, 366};
 
@@ -267,4 +274,16 @@ bool datetime_parse_timestamp(const char* str, DateTime* result) {
     *result = utz_udatetime_sub(&dt, &offset);
 
     return true;
+}
+
+const char* datetime_get_month_short_name(uint8_t month) {
+    furi_check(month >= 1 && month <= MONTHS_COUNT);
+
+    return datetime_month_short_names[month - 1];
+}
+
+const char* datetime_get_weekday_short_name(uint8_t dayofweek) {
+    furi_check(dayofweek >= 1 && dayofweek <= WEEKDAYS_COUNT);
+
+    return datetime_weekday_short_names[dayofweek - 1];
 }
