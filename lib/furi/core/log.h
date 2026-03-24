@@ -21,7 +21,14 @@ typedef enum {
     FuriLogLevelInfo = 4,
     FuriLogLevelDebug = 5,
     FuriLogLevelTrace = 6,
+    FuriLogLevelMAX,
 } FuriLogLevel;
+
+typedef enum {
+    FuriLogExceptionModeInclude,
+    FuriLogExceptionModeExclude,
+    FuriLogExceptionModeMAX,
+} FuriLogExceptionMode;
 
 #define _FURI_LOG_CLR(clr)  "\033[0;" clr "m"
 #define _FURI_LOG_CLR_RESET "\033[0m"
@@ -120,6 +127,28 @@ void furi_log_set_level(FuriLogLevel level);
  * @return     The furi log level.
  */
 FuriLogLevel furi_log_get_level(void);
+
+/** Begin recording the list of log level exceptions.
+ * 
+ * This function clears the list. Subsequent calls to
+ * `furi_log_add_level_exception` will add items to the list.
+ * 
+ * @param[in] level Log level to apply as an exception
+ * @param[in] mode `Include` means that the specified log level will be applied
+ *                 to tags in the list. `Exclude` means that the specified log
+ *                 level will be applied to all tags _except_ ones specified in
+ *                 the list.
+ * 
+ */
+void furi_log_begin_level_exceptions(FuriLogLevel level, FuriLogExceptionMode mode);
+
+/** Add an item to the list of log level exceptions.
+ * 
+ * For more information, read documentation for `furi_log_begin_level_exceptions`.
+ * 
+ * @param[in] tag Tag string to add to the list
+ */
+void furi_log_add_level_exception(const char* tag);
 
 /** Log level to string
  *

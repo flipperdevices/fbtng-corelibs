@@ -3,15 +3,33 @@
 #include "mutex.h"
 #include <furi_hal.h>
 #include <m-list.h>
+#include <m-dict.h>
 
-LIST_DEF(FuriLogHandlersList, FuriLogHandler, M_POD_OPLIST)
+LIST_DEF(FuriLogHandlersList, FuriLogHandler, M_POD_OPLIST);
+
+#define CSTR_ALLOC_INIT_SET(a, b) ((a) = strdup(b))
+#define CSTR_ALLOC_CLEAR(a)       (free((void*)(a)))
+#define CSTR_ALLOC_OPLIST           \
+    (INIT(M_INIT_DEFAULT),          \
+     INIT_SET(CSTR_ALLOC_INIT_SET), \
+     CLEAR(CSTR_ALLOC_CLEAR),       \
+     HASH(m_core_cstr_hash),        \
+     EQUAL(M_CSTR_EQUAL),           \
+     CMP(strcmp),                   \
+     TYPE(const char*),             \
+     OUT_STR(M_CSTR_OUT_STR))
+DICT_SET_DEF(FuriLogExceptions, const char*, CSTR_ALLOC_OPLIST);
 
 #define FURI_LOG_LEVEL_DEFAULT FuriLogLevelInfo
 
 typedef struct {
-    FuriLogLevel log_level;
+    FuriLogLevel default_level;
     FuriMutex* mutex;
     FuriLogHandlersList_t tx_handlers;
+
+    FuriLogLevel exception_level;
+    FuriLogExceptionMode exception_mode;
+    FuriLogExceptions_t exception_list;
 } FuriLogParams;
 
 static FuriLogParams furi_log = {0};
@@ -33,9 +51,10 @@ static const FuriLogLevelDescription FURI_LOG_LEVEL_DESCRIPTIONS[] = {
 
 void furi_log_init(void) {
     // Set default logging parameters
-    furi_log.log_level = FURI_LOG_LEVEL_DEFAULT;
+    furi_log.default_level = FURI_LOG_LEVEL_DEFAULT;
     furi_log.mutex = furi_mutex_alloc(FuriMutexTypeRecursive);
     FuriLogHandlersList_init(furi_log.tx_handlers);
+    FuriLogExceptions_init(furi_log.exception_list);
 }
 
 bool furi_log_add_handler(FuriLogHandler handler) {
@@ -119,11 +138,37 @@ void furi_log_puthex32(uint32_t data) {
     furi_log_puts(tmp_str);
 }
 
+static bool furi_log_is_enabled(FuriLogLevel level, const char* tag) {
+    bool in_exception_list = !!FuriLogExceptions_get(furi_log.exception_list, tag);
+    bool include_mode = furi_log.exception_mode == FuriLogExceptionModeInclude;
+
+    /* default = [I]nfo
+     * exception = [D]ebug
+     * tags = A, B, C, D, E
+     * exceptions = C, E
+     * 
+     *          tag          | A | B | C | D | E |
+     * ----------------------+---+---+---+---+---+
+     * level in include mode | I | I | D | I | D |
+     * level in exclude mode | D | D | I | D | I |
+     * 
+     * use exception level:
+     * include | V | X |
+     * --------+---+---+
+     * in list |   |   |
+     *    V    | V | X |
+     *    X    | X | V |
+     */
+    bool use_exception_level = in_exception_list ^ !include_mode;
+    FuriLogLevel effective_level = use_exception_level ? furi_log.exception_level :
+                                                         furi_log.default_level;
+
+    return effective_level >= level;
+}
+
 void furi_log_print_format(FuriLogLevel level, const char* tag, const char* format, ...) {
     do {
-        if(level > furi_log.log_level) {
-            break;
-        }
+        if(!furi_log_is_enabled(level, tag)) return;
 
         if(furi_mutex_acquire(furi_log.mutex, furi_kernel_is_running() ? FuriWaitForever : 0) !=
            FuriStatusOk) {
@@ -179,7 +224,7 @@ void furi_log_print_format(FuriLogLevel level, const char* tag, const char* form
 }
 
 void furi_log_print_raw_format(FuriLogLevel level, const char* format, ...) {
-    if(level <= furi_log.log_level &&
+    if(level <= furi_log.default_level &&
        furi_mutex_acquire(furi_log.mutex, FuriWaitForever) == FuriStatusOk) {
         FuriString* string;
         string = furi_string_alloc();
@@ -201,11 +246,25 @@ void furi_log_set_level(FuriLogLevel level) {
     if(level == FuriLogLevelDefault) {
         level = FURI_LOG_LEVEL_DEFAULT;
     }
-    furi_log.log_level = level;
+    furi_log.default_level = level;
 }
 
 FuriLogLevel furi_log_get_level(void) {
-    return furi_log.log_level;
+    return furi_log.default_level;
+}
+
+void furi_log_begin_level_exceptions(FuriLogLevel level, FuriLogExceptionMode mode) {
+    furi_check(level < FuriLogLevelMAX);
+    furi_check(mode < FuriLogExceptionModeMAX);
+
+    furi_log.exception_level = level;
+    furi_log.exception_mode = mode;
+    FuriLogExceptions_reset(furi_log.exception_list);
+}
+
+void furi_log_add_level_exception(const char* tag) {
+    furi_check(tag);
+    FuriLogExceptions_push(furi_log.exception_list, tag);
 }
 
 bool furi_log_level_to_string(FuriLogLevel level, const char** str) {
