@@ -567,6 +567,13 @@ void furi_string_left(FuriString* string, size_t index);
  */
 void furi_string_right(FuriString* string, size_t index);
 
+/** If `string` starts with `expected`, trim off `expected` and return `true`.
+ * 
+ * @param     string   The FuriString instance
+ * @param     expected The expected beginning of the string
+ */
+bool furi_string_consume_left(FuriString* string, const char* expected);
+
 /** Trim the string from position index to size bytes.
  *
  * See also furi_string_set_n.

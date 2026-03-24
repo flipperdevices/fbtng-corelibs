@@ -271,6 +271,12 @@ void furi_string_right(FuriString* v, size_t index) {
     string_right(v->string, index);
 }
 
+bool furi_string_consume_left(FuriString* string, const char* expected) {
+    if(!furi_string_start_with_str(string, expected)) return false;
+    furi_string_right(string, strlen(expected));
+    return true;
+}
+
 void furi_string_mid(FuriString* v, size_t index, size_t size) {
     string_mid(v->string, index, size);
 }
