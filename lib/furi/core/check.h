@@ -107,9 +107,13 @@ FURI_NORETURN void __furi_halt_implementation(void);
 
 /** Override this function to add custom crash handling.
  *
- * Default implementation is a weak function that does nothing. 
+ * Default implementation is a weak function.
+ *
+ * @param debug true if debug is enabled by DAP
+ *
+ * @return true if system should be rebooted. Default: reboot only if debug is not enabled.
  */
-void furi_crash_handler(void);
+bool furi_crash_handler(bool debug);
 
 #ifdef __cplusplus
 }
