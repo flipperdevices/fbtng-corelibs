@@ -108,8 +108,15 @@ static void __furi_print_name(bool isr) {
     }
 }
 
-FURI_WEAK void furi_crash_handler() {
+FURI_WEAK bool furi_crash_handler(bool debug) {
     furi_log_puts("No additional crash handler defined.\r\n");
+
+#ifndef FURI_DEBUG
+    return !debug;
+#else
+    UNUSED(debug);
+    return false;
+#endif
 }
 
 FURI_NORETURN void __furi_crash_implementation(void) {
@@ -136,20 +143,17 @@ FURI_NORETURN void __furi_crash_implementation(void) {
     }
     __furi_print_heap_info();
 
-    furi_crash_handler();
-
     // Check if debug enabled by DAP
     // https://developer.arm.com/documentation/ddi0403/d/Debug-Architecture/ARMv7-M-Debug/Debug-register-support-in-the-SCS/Debug-Halting-Control-and-Status-Register--DHCSR?lang=en
     bool debug = CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk;
-#ifndef FURI_DEBUG
-    if(debug) {
-#endif
+    bool reboot = furi_crash_handler(debug);
+
+    if(!reboot) {
         furi_log_puts("\r\nSystem halted. Connect debugger for more info\r\n");
         furi_log_puts("\033[0m\r\n");
         furi_hal_debug_enable();
 
         RESTORE_REGISTERS_AND_HALT_MCU(debug);
-#ifndef FURI_DEBUG
     } else {
         uint32_t ptr = (uint32_t)__furi_check_message;
         if(ptr < (uint32_t)furi_hal_flash_get_base() ||
@@ -161,7 +165,6 @@ FURI_NORETURN void __furi_crash_implementation(void) {
         furi_log_puts("\033[0m\r\n");
         furi_hal_power_reset();
     }
-#endif
     __builtin_unreachable();
 }
 
