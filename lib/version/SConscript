@@ -44,6 +44,7 @@ env.AppendUnique(
     FW_ARTIFACTS=[fw_version_json],
     FW_STATIC_ANALYSIS_DEPS=[fw_version_json],
 )
+env.Replace(FW_VERSION_JSON=fw_version_json)
 
 if not version_depends:
     libenv.Precious(build_version)
