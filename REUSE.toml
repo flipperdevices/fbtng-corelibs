@@ -1,0 +1,28 @@
+version = 1
+
+[[annotations]]
+path = [
+    "*",
+    "lib/*.scons",
+    "lib/bit_lib/**",
+    "lib/datetime/**",
+    "lib/version/**",
+    "lib/print/**",
+]
+SPDX-FileCopyrightText = "2024-2026 Flipper FZCO"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = "lib/furi/**"
+SPDX-FileCopyrightText = "2024-2026 Flipper FZCO"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/fatfs/**"
+SPDX-FileCopyrightText = ["ChaN", "ST Microelectronics"]
+SPDX-License-Identifier = "LicenseRef-FatFs"
+
+[[annotations]]
+path = "lib/print/printf_tiny.*"
+SPDX-FileCopyrightText = "(c) Marco Paland (info@paland.com) 2014-2019, PALANDesign Hannover, Germany"
+SPDX-License-Identifier = "MIT"
