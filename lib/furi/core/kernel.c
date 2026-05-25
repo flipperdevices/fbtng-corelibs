@@ -202,12 +202,12 @@ void furi_delay_ms(uint32_t milliseconds) {
 }
 
 FURI_WEAK void furi_delay_us(uint32_t microseconds) {
-    // furi_check(microseconds < (UINT32_MAX / furi_hal_cpu_get_cycles_per_us()));
+    furi_check(microseconds < (UINT32_MAX / furi_hal_cpu_get_cycles_per_us()));
 
-    // const uint32_t cycles_start = furi_hal_cpu_get_cycle_count();
-    // const uint32_t cycles_to_wait = furi_hal_cpu_get_cycles_per_us() * microseconds;
+    const uint32_t cycles_start = furi_hal_cpu_get_cycle_count();
+    const uint32_t cycles_to_wait = furi_hal_cpu_get_cycles_per_us() * microseconds;
 
-    // while((furi_hal_cpu_get_cycle_count() - cycles_start) < cycles_to_wait) {
-    //     // Nothing
-    // }
+    while((furi_hal_cpu_get_cycle_count() - cycles_start) < cycles_to_wait) {
+        // Nothing
+    }
 }
