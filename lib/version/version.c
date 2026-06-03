@@ -40,7 +40,6 @@ static_assert(offsetof(struct Version, build_is_dirty) == 21);
 static_assert(offsetof(struct Version, firmware_origin) == 24);
 static_assert(offsetof(struct Version, git_origin) == 28);
 
-
 /* version of current running firmware (bootloader/flipper) */
 static const Version version = {
     .magic = VERSION_MAGIC,
