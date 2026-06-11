@@ -85,13 +85,23 @@ static FuriMessageQueue* furi_thread_scrub_message_queue = NULL;
 static size_t __furi_thread_stdout_write(FuriThread* thread, const char* data, size_t size);
 static int32_t __furi_thread_stdout_flush(FuriThread* thread);
 
-/** Catch threads that are trying to exit wrong way */
-__attribute__((__noreturn__)) void furi_thread_catch(void) { //-V1082
+/** Catch threads that are trying to exit wrong way - crash implementation */
+static __attribute__((used, __noreturn__)) void furi_thread_catch_impl(void) {
     // If you're here it means you're probably doing something wrong
     // with critical sections or with scheduler state
-    asm volatile("nop"); // extra magic
     furi_crash("You are doing it wrong"); //-V779
     __builtin_unreachable();
+}
+
+/** Artificial return target for FreeRTOS tasks (configTASK_RETURN_ADDRESS).
+ *
+ * Naked so there is no prologue, and .cfi_undefined lr tells the DWARF
+ * unwinder that the return address is not recoverable here. Without this,
+ * the unwinder tries to restore LR from below the freshly initialised task
+ * stack and walks off into garbage (see flipperone-mcu-firmware issue #51). */
+__attribute__((naked, __noreturn__)) void furi_thread_catch(void) { //-V1082
+    asm volatile(".cfi_undefined lr\n\t"
+                 "b furi_thread_catch_impl\n\t");
 }
 
 static void furi_thread_set_state(FuriThread* thread, FuriThreadState state) {
