@@ -91,7 +91,7 @@ static FuriRecordData* furi_record_data_get_or_create(const char* name) {
     furi_check(furi_record);
 
     FuriRecordData* record_data = furi_record_get(name);
-    if(record_data) {
+    if(!record_data) {
         record_data = furi_record_data_create(name);
     }
 
