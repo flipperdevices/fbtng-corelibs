@@ -248,7 +248,7 @@ void memmgr_heap_printf_free_blocks(void) {
 
     vTaskSuspendAll();
 
-    size_t blocks_info_sz = 0;
+    size_t blocks_info_sz = 1;
     pxBlock = xStart.pxNextFreeBlock;
     while(pxBlock->pxNextFreeBlock != NULL) {
         pxBlock = pxBlock->pxNextFreeBlock;
@@ -258,7 +258,7 @@ void memmgr_heap_printf_free_blocks(void) {
 
     blocks_info = pvPortMalloc(blocks_info_sz * sizeof(MemmgrHeapBlockInfo));
     size_t blocks_count = 0;
-    pxBlock = xStart.pxNextFreeBlock;
+    pxBlock = &xStart;
     while((pxBlock->pxNextFreeBlock != NULL) && (blocks_count < blocks_info_sz)) {
         blocks_info[blocks_count].addr = (size_t)pxBlock;
         blocks_info[blocks_count].size = (size_t)pxBlock->xBlockSize;
@@ -268,9 +268,29 @@ void memmgr_heap_printf_free_blocks(void) {
 
     xTaskResumeAll();
 
+    size_t total_free = 0;
+    size_t max_free = 0;
     for(size_t i = 0; i < blocks_count; i++) {
-        printf("A %p S %lu\r\n", (void*)blocks_info[i].addr, (uint32_t)blocks_info[i].size);
+        size_t used_size = 0;
+        if(i < blocks_count - 1) {
+            used_size = blocks_info[i + 1].addr - (blocks_info[i].addr + blocks_info[i].size);
+        }
+        printf(
+            "0x%p\tFree: %lu \tUsed: %lu\r\n",
+            (void*)blocks_info[i].addr,
+            (uint32_t)blocks_info[i].size,
+            (uint32_t)used_size);
+
+        total_free += blocks_info[i].size;
+        if(blocks_info[i].size > max_free) {
+            max_free = blocks_info[i].size;
+        }
     }
+    uint32_t fragmentation = total_free > 0 ? (100 - (max_free * 100 / total_free)) : 0;
+    printf(
+        "\r\nLargest free block: %lu\r\nFragmentation: %lu%%\r\n",
+        (uint32_t)max_free,
+        fragmentation);
     vPortFree(blocks_info);
 }
 
