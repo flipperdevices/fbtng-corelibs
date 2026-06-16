@@ -37,12 +37,14 @@ void furi_record_create(const char* name, void* data);
  *
  * @param      name  record name
  *
- * @return     true if successful, false if still have holders or thread is not
- *             owner.
+ * Blocks the calling thread until the record has been released by all its users.
+ * Threads calling `furi_record_open()` will be blocked until
+ * the record is created again via `furi_record_create()`.
+ *
  * @note       Thread safe. Create and destroy must be executed from the same
  *             thread.
  */
-bool furi_record_destroy(const char* name);
+void furi_record_destroy(const char* name);
 
 /** Open record
  *
