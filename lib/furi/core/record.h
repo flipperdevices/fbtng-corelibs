@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <stdbool.h>
 #include "core_defines.h"
 
@@ -55,6 +56,18 @@ void furi_record_destroy(const char* name);
  *             thread. Suspends caller thread till record is available
  */
 FURI_RETURNS_NONNULL void* furi_record_open(const char* name);
+
+/** Open record or fail after a timeout
+ *
+ * @param      name  record name
+ * @param      timeout timeout in ticks
+ *
+ * @return     pointer to the record or @c NULL in case of failure
+ * @note       Thread safe. Open and close must be executed from the same
+ *             thread. Suspends caller thread till record is available or
+ *             until the timeout has expired
+ */
+void* furi_record_open_ex(const char* name, uint32_t timeout);
 
 /** Close record
  *

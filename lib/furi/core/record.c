@@ -57,14 +57,11 @@ void furi_record_init(void) {
     FuriRecordDataDict_init(furi_record->records);
 }
 
-static void furi_record_data_wait_for_ready(const FuriRecordData* record_data) {
+static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
     const uint32_t flags = furi_event_flag_wait(
-        record_data->flags,
-        FuriRecordFlagReady,
-        FuriFlagWaitAny | FuriFlagNoClear,
-        FuriWaitForever);
+        record_data->flags, FuriRecordFlagReady, FuriFlagWaitAny | FuriFlagNoClear, timeout);
 
-    furi_check(flags == FuriRecordFlagReady);
+    return (flags == FuriRecordFlagReady);
 }
 
 static void furi_record_data_wait_for_released(const FuriRecordData* record_data) {
@@ -172,6 +169,10 @@ void furi_record_destroy(const char* name) {
 }
 
 void* furi_record_open(const char* name) {
+    return furi_record_open_ex(name, FuriWaitForever);
+}
+
+void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_check(furi_record);
     furi_check(name);
 
@@ -183,7 +184,14 @@ void* furi_record_open(const char* name) {
 
     furi_record_unlock();
 
-    furi_record_data_wait_for_ready(record_data);
+    if(!furi_record_data_wait_for_ready(record_data, timeout)) {
+        furi_record_lock();
+
+        record_data->holders_count--;
+
+        furi_record_unlock();
+    }
+
     return record_data->data;
 }
 
