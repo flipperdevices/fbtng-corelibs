@@ -15,7 +15,6 @@ typedef enum {
 
 typedef struct {
     FuriEventFlag* flags;
-    FuriThread* owner;
     void* data;
     uint16_t holders_count;
     uint16_t pending_count;
@@ -45,7 +44,6 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
 
 static void furi_record_reset(FuriRecordData* record_data) {
     furi_event_flag_clear(record_data->flags, FuriRecordFlagReady);
-    record_data->owner = NULL;
     record_data->data = NULL;
     record_data->pending_count = record_data->holders_count;
     record_data->holders_count = 0;
@@ -125,9 +123,8 @@ void furi_record_create(const char* name, void* data) {
 
     // Get record data and fill it
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
-    furi_check(record_data->owner == NULL);
     furi_check(record_data->data == NULL);
-    record_data->owner = furi_thread_get_current();
+    furi_check(record_data->pending_count == 0);
     record_data->data = data;
     furi_event_flag_set(record_data->flags, FuriRecordFlagReady);
 
@@ -144,7 +141,6 @@ void furi_record_destroy(const char* name) {
 
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
-    furi_check(record_data->owner == furi_thread_get_current());
 
     if(record_data->holders_count == 0) {
         furi_record_erase(name, record_data);
