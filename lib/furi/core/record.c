@@ -208,7 +208,7 @@ void furi_record_close(const char* name) {
         record_data->pending_count--;
 
         if(record_data->pending_count == 0) {
-            furi_thread_flags_set(record_data->flags, FuriRecordFlagReleased);
+            furi_event_flag_set(record_data->flags, FuriRecordFlagReleased);
         }
 
     } else if(record_data->holders_count > 0) {
