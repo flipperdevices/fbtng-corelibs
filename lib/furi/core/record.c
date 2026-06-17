@@ -43,7 +43,7 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
 }
 
 static void furi_record_reset(FuriRecordData* record_data) {
-    furi_event_flag_clear(record_data->flags, FuriRecordFlagReady);
+    furi_event_flag_clear(record_data->flags, FuriRecordFlagReady | FuriRecordFlagReleased);
     record_data->data = NULL;
     record_data->pending_count = record_data->holders_count;
     record_data->holders_count = 0;
@@ -67,6 +67,26 @@ static void furi_record_data_wait_for_released(const FuriRecordData* record_data
         record_data->flags, FuriRecordFlagReleased, FuriFlagWaitAny, FuriWaitForever);
 
     furi_check(flags == FuriRecordFlagReleased);
+}
+
+static void furi_record_data_increment_count(FuriRecordData* record_data) {
+    furi_check(record_data->holders_count < FURI_RECORD_HOLDERS_MAX);
+    record_data->holders_count++;
+}
+
+static void furi_record_data_decrement_count(FuriRecordData* record_data) {
+    if(record_data->pending_count > 0) {
+        record_data->pending_count--;
+
+        if(record_data->pending_count == 0) {
+            furi_event_flag_set(record_data->flags, FuriRecordFlagReleased);
+        }
+
+    } else if(record_data->holders_count > 0) {
+        record_data->holders_count--;
+    } else {
+        furi_crash("Closed more times than opened");
+    }
 }
 
 static FuriRecordData* furi_record_data_create(const char* name) {
@@ -175,20 +195,24 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
-    furi_check(record_data->holders_count < FURI_RECORD_HOLDERS_MAX);
-    record_data->holders_count++;
+    furi_record_data_increment_count(record_data);
 
     furi_record_unlock();
 
-    if(!furi_record_data_wait_for_ready(record_data, timeout)) {
+    void* data_ptr = NULL;
+
+    if(furi_record_data_wait_for_ready(record_data, timeout)) {
+        data_ptr = record_data->data;
+
+    } else {
         furi_record_lock();
 
-        record_data->holders_count--;
+        furi_record_data_decrement_count(record_data);
 
         furi_record_unlock();
     }
 
-    return record_data->data;
+    return data_ptr;
 }
 
 void furi_record_close(const char* name) {
@@ -200,18 +224,7 @@ void furi_record_close(const char* name) {
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
 
-    if(record_data->pending_count > 0) {
-        record_data->pending_count--;
-
-        if(record_data->pending_count == 0) {
-            furi_event_flag_set(record_data->flags, FuriRecordFlagReleased);
-        }
-
-    } else if(record_data->holders_count > 0) {
-        record_data->holders_count--;
-    } else {
-        furi_crash("Closed more times than opened");
-    }
+    furi_record_data_decrement_count(record_data);
 
     furi_record_unlock();
 }
