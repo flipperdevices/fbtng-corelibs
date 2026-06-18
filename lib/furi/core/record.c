@@ -44,6 +44,7 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
 
 static void furi_record_reset(FuriRecordData* record_data) {
     furi_event_flag_clear(record_data->flags, FuriRecordFlagReady | FuriRecordFlagReleased);
+
     record_data->data = NULL;
     record_data->pending_count = record_data->holders_count;
     record_data->holders_count = 0;
@@ -141,10 +142,10 @@ void furi_record_create(const char* name, void* data) {
 
     furi_record_lock();
 
-    // Get record data and fill it
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
     furi_check(record_data->data == NULL);
     furi_check(record_data->pending_count == 0);
+
     record_data->data = data;
     furi_event_flag_set(record_data->flags, FuriRecordFlagReady);
 
