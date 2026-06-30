@@ -237,14 +237,9 @@ size_t memmgr_heap_get_max_free_block(void) {
     return max_free_size;
 }
 
-typedef struct {
-    size_t addr;
-    size_t size;
-} MemmgrHeapBlockInfo;
-
-void memmgr_heap_printf_free_blocks(void) {
+MemmgrHeapBlockInfo* memmgr_heap_get_free_blocks_info(void) {
     BlockLink_t* pxBlock;
-    MemmgrHeapBlockInfo* blocks_info = NULL;
+    MemmgrHeapBlockInfo* info = NULL;
 
     vTaskSuspendAll();
 
@@ -256,42 +251,18 @@ void memmgr_heap_printf_free_blocks(void) {
     }
     blocks_info_sz++;
 
-    blocks_info = pvPortMalloc(blocks_info_sz * sizeof(MemmgrHeapBlockInfo));
+    info = malloc(sizeof(MemmgrHeapBlockInfo) + blocks_info_sz * sizeof(info->blocks[0]));
     size_t blocks_count = 0;
     pxBlock = &xStart;
     while((pxBlock->pxNextFreeBlock != NULL) && (blocks_count < blocks_info_sz)) {
-        blocks_info[blocks_count].addr = (size_t)pxBlock;
-        blocks_info[blocks_count].size = (size_t)pxBlock->xBlockSize;
+        info->blocks[blocks_count].addr = (size_t)pxBlock;
+        info->blocks[blocks_count].size = (size_t)pxBlock->xBlockSize;
         pxBlock = pxBlock->pxNextFreeBlock;
         blocks_count++;
     }
-
     xTaskResumeAll();
-
-    size_t total_free = 0;
-    size_t max_free = 0;
-    for(size_t i = 0; i < blocks_count; i++) {
-        size_t used_size = 0;
-        if(i < blocks_count - 1) {
-            used_size = blocks_info[i + 1].addr - (blocks_info[i].addr + blocks_info[i].size);
-        }
-        printf(
-            "0x%p\tFree: %lu \tUsed: %lu\r\n",
-            (void*)blocks_info[i].addr,
-            (uint32_t)blocks_info[i].size,
-            (uint32_t)used_size);
-
-        total_free += blocks_info[i].size;
-        if(blocks_info[i].size > max_free) {
-            max_free = blocks_info[i].size;
-        }
-    }
-    uint32_t fragmentation = total_free > 0 ? (100 - (max_free * 100 / total_free)) : 0;
-    printf(
-        "\r\nLargest free block: %lu\r\nFragmentation: %lu%%\r\n",
-        (uint32_t)max_free,
-        fragmentation);
-    vPortFree(blocks_info);
+    info->free_blocks = blocks_count;
+    return info;
 }
 
 #ifdef HEAP_PRINT_DEBUG
