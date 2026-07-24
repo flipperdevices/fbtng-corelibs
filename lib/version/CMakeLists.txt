@@ -1,6 +1,9 @@
 execute_process(
     COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --short HEAD
     OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(DEFINED ENV{COMMIT_SHA} AND NOT "$ENV{COMMIT_SHA}" STREQUAL "")
+    set(GIT_COMMIT "$ENV{COMMIT_SHA}")
+endif()
 if(NOT GIT_COMMIT)
     set(GIT_COMMIT "unknown")
 endif()
@@ -8,6 +11,9 @@ endif()
 execute_process(
     COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --abbrev-ref HEAD
     OUTPUT_VARIABLE GIT_BRANCH OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(DEFINED ENV{BRANCH_NAME} AND NOT "$ENV{BRANCH_NAME}" STREQUAL "")
+    set(GIT_BRANCH "$ENV{BRANCH_NAME}")
+endif()
 if(NOT GIT_BRANCH)
     set(GIT_BRANCH "unknown")
 endif()
@@ -24,6 +30,9 @@ if(NOT GIT_VERSION)
     else()
         set(GIT_VERSION "unknown")
     endif()
+endif()
+if(DEFINED ENV{DIST_SUFFIX} AND NOT "$ENV{DIST_SUFFIX}" STREQUAL "")
+    set(GIT_VERSION "$ENV{DIST_SUFFIX}")
 endif()
 
 execute_process(
