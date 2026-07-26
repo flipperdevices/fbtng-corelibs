@@ -130,11 +130,14 @@ static inline FuriEventLoopProcessStatus
     furi_event_loop_process_event(FuriEventLoop* instance, FuriEventLoopItem* item) {
     FuriEventLoopProcessStatus status;
 
+    // Set current_item before the FlagOnce auto-unsubscribe so that
+    // furi_event_loop_unsubscribe() takes the free-later path instead of
+    // freeing the item that is about to be dereferenced and called through.
+    instance->current_item = item;
+
     if(item->event & FuriEventLoopEventFlagOnce) {
         furi_event_loop_unsubscribe(instance, item->object);
     }
-
-    instance->current_item = item;
 
     if(item->event & FuriEventLoopEventFlagEdge) {
         status = furi_event_loop_process_edge_event(item);
@@ -191,7 +194,7 @@ static void furi_event_loop_process_waiting_list(FuriEventLoop* instance) {
     } else if(status == FuriEventLoopProcessStatusIncomplete) {
         // Event processing incomplete, put item back in waiting list
         furi_event_loop_item_notify(item);
-    } else if(status == FuriEventLoopProcessStatusFreeLater) { //-V547
+    } else if(status == FuriEventLoopProcessStatusFreeLater) {
         // Unsubscribed from inside the callback, delete item
         furi_event_loop_item_free(item);
     } else {
