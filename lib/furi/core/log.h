@@ -98,7 +98,7 @@ void furi_log_puthex32(uint32_t data);
  * @param ... 
  */
 void furi_log_print_format(FuriLogLevel level, const char* tag, const char* format, ...)
-    _ATTRIBUTE((__format__(__printf__, 3, 4)));
+    __attribute__((__format__(__printf__, 3, 4)));
 
 /** Print log record
  * 
@@ -107,7 +107,7 @@ void furi_log_print_format(FuriLogLevel level, const char* tag, const char* form
  * @param ... 
  */
 void furi_log_print_raw_format(FuriLogLevel level, const char* format, ...)
-    _ATTRIBUTE((__format__(__printf__, 2, 3)));
+    __attribute__((__format__(__printf__, 2, 3)));
 
 /** Set log level
  *

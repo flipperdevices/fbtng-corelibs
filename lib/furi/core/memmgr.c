@@ -58,6 +58,10 @@ size_t memmgr_get_minimum_free_heap(void) {
     return xPortGetMinimumEverFreeHeapSize();
 }
 
+/* The _r allocator entry points exist only in newlib; picolibc has no struct _reent
+ * and routes everything through plain malloc()/free() above. */
+#ifndef __PICOLIBC__
+
 void* __wrap__malloc_r(struct _reent* r, size_t size) {
     UNUSED(r);
     return pvPortMalloc(size);
@@ -77,6 +81,8 @@ void* __wrap__realloc_r(struct _reent* r, void* ptr, size_t size) {
     UNUSED(r);
     return realloc(ptr, size);
 }
+
+#endif /* !__PICOLIBC__ */
 
 void* memmgr_alloc_from_pool(size_t size) {
     void* p = furi_hal_memory_alloc(size);
