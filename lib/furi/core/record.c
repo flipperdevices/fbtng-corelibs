@@ -156,33 +156,22 @@ void furi_record_destroy(const char* name) {
     furi_check(furi_record);
     furi_check(name);
 
-    bool should_wait = false;
-
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
 
-    if(record_data->holders_count == 0) {
-        furi_record_erase(name, record_data);
-    } else {
+    while(record_data->holders_count != 0) {
         furi_record_reset(record_data);
-        should_wait = true;
-    }
-
-    furi_record_unlock();
-
-    if(should_wait) {
-        furi_record_data_wait_for_released(record_data);
-
-        furi_record_lock();
-
-        if(record_data->holders_count == 0) {
-            furi_record_erase(name, record_data);
-        }
 
         furi_record_unlock();
+        furi_record_data_wait_for_released(record_data);
+        furi_record_lock();
     }
+
+    furi_record_erase(name, record_data);
+
+    furi_record_unlock();
 }
 
 void* furi_record_open(const char* name) {
