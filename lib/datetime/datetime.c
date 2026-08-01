@@ -31,8 +31,9 @@ time_t datetime_datetime_to_timestamp(const DateTime* datetime) {
         }
     }
 
-    timestamp += ((years * datetime_days_per_year[0]) + (leap_years * datetime_days_per_year[1])) *
-                 SECONDS_PER_DAY;
+    timestamp +=
+        (time_t)((years * datetime_days_per_year[0]) + (leap_years * datetime_days_per_year[1])) *
+        SECONDS_PER_DAY;
 
     bool leap_year = datetime_is_leap_year(datetime->year);
 
