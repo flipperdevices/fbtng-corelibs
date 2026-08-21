@@ -140,6 +140,39 @@ FuriStatus furi_message_queue_get(FuriMessageQueue* instance, void* msg_ptr, uin
     return stat;
 }
 
+FuriStatus furi_message_queue_peek(FuriMessageQueue* instance, void* msg_ptr, uint32_t timeout) {
+    furi_check(instance);
+
+    QueueHandle_t hQueue = (QueueHandle_t)instance;
+    FuriStatus stat;
+
+    stat = FuriStatusOk;
+
+    if(furi_kernel_is_irq_or_masked() != 0U) {
+        if((msg_ptr == NULL) || (timeout != 0U)) {
+            stat = FuriStatusErrorParameter;
+        } else {
+            if(xQueuePeekFromISR(hQueue, msg_ptr) != pdPASS) {
+                stat = FuriStatusErrorResource;
+            }
+        }
+    } else {
+        if(msg_ptr == NULL) {
+            stat = FuriStatusErrorParameter;
+        } else {
+            if(xQueuePeek(hQueue, msg_ptr, (TickType_t)timeout) != pdPASS) {
+                if(timeout != 0U) {
+                    stat = FuriStatusErrorTimeout;
+                } else {
+                    stat = FuriStatusErrorResource;
+                }
+            }
+        }
+    }
+
+    return stat;
+}
+
 uint32_t furi_message_queue_get_capacity(FuriMessageQueue* instance) {
     furi_check(instance);
 
