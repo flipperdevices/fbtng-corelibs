@@ -178,6 +178,17 @@ uint32_t furi_get_tick(void) {
     return ticks;
 }
 
+FuriTickTimer furi_tick_timer_get(uint32_t timeout_ticks) {
+    return (FuriTickTimer){
+        .start = furi_get_tick(),
+        .value = timeout_ticks,
+    };
+}
+
+bool furi_tick_timer_is_expired(FuriTickTimer tick_timer) {
+    return (furi_get_tick() - tick_timer.start) >= tick_timer.value;
+}
+
 uint32_t furi_ms_to_ticks(uint32_t milliseconds) {
 #if configTICK_RATE_HZ_RAW == 1000
     return milliseconds;
