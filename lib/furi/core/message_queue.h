@@ -48,6 +48,16 @@ FuriStatus
  */
 FuriStatus furi_message_queue_get(FuriMessageQueue* instance, void* msg_ptr, uint32_t timeout);
 
+/** Peek at a message from queue
+ *
+ * @param      instance  pointer to FuriMessageQueue instance
+ * @param      msg_ptr   The message pointer
+ * @param[in]  timeout   The timeout
+ *
+ * @return     The furi status.
+ */
+FuriStatus furi_message_queue_peek(FuriMessageQueue* instance, void* msg_ptr, uint32_t timeout);
+
 /** Get queue capacity
  *
  * @param      instance  pointer to FuriMessageQueue instance
