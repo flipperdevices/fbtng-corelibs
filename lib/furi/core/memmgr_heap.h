@@ -14,6 +14,16 @@ extern "C" {
 
 #define MEMMGR_HEAP_UNKNOWN 0xFFFFFFFF
 
+/** Memmgr heap free blocks info structure
+ */
+typedef struct {
+    size_t free_blocks;
+    struct {
+        size_t addr;
+        size_t size;
+    } blocks[];
+} MemmgrHeapBlockInfo;
+
 /** Memmgr heap enable thread allocation tracking
  *
  * @param      thread_id  - thread id to track
@@ -40,10 +50,11 @@ size_t memmgr_heap_get_thread_memory(FuriThreadId thread_id);
  */
 size_t memmgr_heap_get_max_free_block(void);
 
-/** Print the address and size of all free blocks to stdout
+/** Gets the information about free heap blocks
+ *
+ * @return     pointer to allocated MemmgrHeapBlockInfo structure, should be freed by the caller
  */
-void memmgr_heap_printf_free_blocks(void);
-
+MemmgrHeapBlockInfo* memmgr_heap_get_free_blocks_info(void);
 #ifdef __cplusplus
 }
 #endif

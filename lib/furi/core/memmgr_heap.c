@@ -237,18 +237,13 @@ size_t memmgr_heap_get_max_free_block(void) {
     return max_free_size;
 }
 
-typedef struct {
-    size_t addr;
-    size_t size;
-} MemmgrHeapBlockInfo;
-
-void memmgr_heap_printf_free_blocks(void) {
+MemmgrHeapBlockInfo* memmgr_heap_get_free_blocks_info(void) {
     BlockLink_t* pxBlock;
-    MemmgrHeapBlockInfo* blocks_info = NULL;
+    MemmgrHeapBlockInfo* info = NULL;
 
     vTaskSuspendAll();
 
-    size_t blocks_info_sz = 0;
+    size_t blocks_info_sz = 1;
     pxBlock = xStart.pxNextFreeBlock;
     while(pxBlock->pxNextFreeBlock != NULL) {
         pxBlock = pxBlock->pxNextFreeBlock;
@@ -256,22 +251,18 @@ void memmgr_heap_printf_free_blocks(void) {
     }
     blocks_info_sz++;
 
-    blocks_info = pvPortMalloc(blocks_info_sz * sizeof(MemmgrHeapBlockInfo));
+    info = malloc(sizeof(MemmgrHeapBlockInfo) + blocks_info_sz * sizeof(info->blocks[0]));
     size_t blocks_count = 0;
-    pxBlock = xStart.pxNextFreeBlock;
+    pxBlock = &xStart;
     while((pxBlock->pxNextFreeBlock != NULL) && (blocks_count < blocks_info_sz)) {
-        blocks_info[blocks_count].addr = (size_t)pxBlock;
-        blocks_info[blocks_count].size = (size_t)pxBlock->xBlockSize;
+        info->blocks[blocks_count].addr = (size_t)pxBlock;
+        info->blocks[blocks_count].size = (size_t)pxBlock->xBlockSize;
         pxBlock = pxBlock->pxNextFreeBlock;
         blocks_count++;
     }
-
     xTaskResumeAll();
-
-    for(size_t i = 0; i < blocks_count; i++) {
-        printf("A %p S %lu\r\n", (void*)blocks_info[i].addr, (uint32_t)blocks_info[i].size);
-    }
-    vPortFree(blocks_info);
+    info->free_blocks = blocks_count;
+    return info;
 }
 
 #ifdef HEAP_PRINT_DEBUG
