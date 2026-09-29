@@ -57,23 +57,23 @@ void furi_record_init(void) {
     FuriRecordDataDict_init(furi_record->records);
 }
 
-static uint32_t furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
-    const uint32_t now_ticks = furi_get_tick();
+static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
+    bool ret = false;
 
     const uint32_t flags = furi_event_flag_wait(
         record_data->flags, FuriRecordFlagReady, FuriFlagWaitAny | FuriFlagNoClear, timeout);
 
-    if((flags & FuriFlagError) != 0) {
-        if(timeout == FuriWaitForever) {
-            furi_crash();
-        } else if(timeout == 0) {
-            furi_check(flags == FuriFlagErrorResource);
-        } else {
-            furi_check(flags == FuriFlagErrorTimeout);
-        }
+    if(flags == FuriRecordFlagReady) {
+        ret = true;
+    } else if(timeout == FuriWaitForever) {
+        furi_crash();
+    } else if(timeout == 0) {
+        furi_check(flags == FuriFlagErrorResource);
+    } else {
+        furi_check(flags == FuriFlagErrorTimeout);
     }
 
-    return furi_get_tick() - now_ticks;
+    return ret;
 }
 
 static void furi_record_data_wait_for_released(const FuriRecordData* record_data) {
@@ -207,6 +207,8 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_check(furi_record);
     furi_check(name);
 
+    const uint32_t start_ticks = furi_get_tick();
+
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
@@ -215,20 +217,38 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_record_unlock();
 
     void* data_ptr = NULL;
+    uint32_t remaining_ticks = timeout;
 
-    furi_record_data_wait_for_ready(record_data, timeout);
+    do {
+        if(remaining_ticks != FuriWaitForever) {
+            const uint32_t elapsed_ticks = furi_get_tick() - start_ticks;
 
-    furi_record_lock();
+            if(elapsed_ticks < remaining_ticks) {
+                remaining_ticks -= elapsed_ticks;
+            } else {
+                remaining_ticks = 0;
+            }
+        }
 
-    if(furi_event_flag_get(record_data->flags) & FuriRecordFlagReady) {
+        if(!furi_record_data_wait_for_ready(record_data, remaining_ticks)) {
+            break;
+        }
+
+        furi_record_lock();
+
         data_ptr = record_data->data;
-    }
+
+        furi_record_unlock();
+
+    } while(data_ptr == NULL);
 
     if(data_ptr == NULL) {
-        furi_record_data_decrement_count(record_data);
-    }
+        furi_record_lock();
 
-    furi_record_unlock();
+        furi_record_data_decrement_count(record_data);
+
+        furi_record_unlock();
+    }
 
     return data_ptr;
 }
