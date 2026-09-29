@@ -1,6 +1,7 @@
 #include "record.h"
 #include "check.h"
 #include "mutex.h"
+#include "kernel.h"
 #include "event_flag.h"
 
 #include <m-dict.h>
@@ -56,11 +57,23 @@ void furi_record_init(void) {
     FuriRecordDataDict_init(furi_record->records);
 }
 
-static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
+static uint32_t furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
+    const uint32_t now_ticks = furi_get_tick();
+
     const uint32_t flags = furi_event_flag_wait(
         record_data->flags, FuriRecordFlagReady, FuriFlagWaitAny | FuriFlagNoClear, timeout);
 
-    return (flags == FuriRecordFlagReady);
+    if((flags & FuriFlagError) != 0) {
+        if(timeout == FuriWaitForever) {
+            furi_crash();
+        } else if(timeout == 0) {
+            furi_check(flags == FuriFlagErrorResource);
+        } else {
+            furi_check(flags == FuriFlagErrorTimeout);
+        }
+    }
+
+    return furi_get_tick() - now_ticks;
 }
 
 static void furi_record_data_wait_for_released(const FuriRecordData* record_data) {
@@ -139,6 +152,7 @@ bool furi_record_exists(const char* name) {
 void furi_record_create(const char* name, void* data) {
     furi_check(furi_record);
     furi_check(name);
+    furi_check(data);
 
     furi_record_lock();
 
@@ -202,16 +216,19 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
 
     void* data_ptr = NULL;
 
-    if(furi_record_data_wait_for_ready(record_data, timeout)) {
+    furi_record_data_wait_for_ready(record_data, timeout);
+
+    furi_record_lock();
+
+    if(furi_event_flag_get(record_data->flags) & FuriRecordFlagReady) {
         data_ptr = record_data->data;
-
-    } else {
-        furi_record_lock();
-
-        furi_record_data_decrement_count(record_data);
-
-        furi_record_unlock();
     }
+
+    if(data_ptr == NULL) {
+        furi_record_data_decrement_count(record_data);
+    }
+
+    furi_record_unlock();
 
     return data_ptr;
 }
