@@ -19,6 +19,7 @@ typedef struct {
     void* data;
     uint16_t holders_count;
     uint16_t pending_count;
+    uint16_t waiting_count;
 } FuriRecordData;
 
 DICT_DEF2(FuriRecordDataDict, const char*, M_CSTR_DUP_OPLIST, FuriRecordData, M_POD_OPLIST)
@@ -41,6 +42,11 @@ static void furi_record_put(const char* name, const FuriRecordData* record_data)
 static void furi_record_erase(const char* name, FuriRecordData* record_data) {
     furi_event_flag_free(record_data->flags);
     FuriRecordDataDict_erase(furi_record->records, name);
+}
+
+static bool furi_record_can_erase(const FuriRecordData* record_data) {
+    return (record_data->holders_count == 0) && (record_data->pending_count == 0) &&
+           (record_data->waiting_count == 0);
 }
 
 static void furi_record_reset(FuriRecordData* record_data) {
@@ -100,6 +106,19 @@ static void furi_record_data_decrement_count(FuriRecordData* record_data) {
         record_data->holders_count--;
     } else {
         furi_crash("Closed more times than opened");
+    }
+}
+
+static void furi_record_data_increment_waiting_count(FuriRecordData* record_data) {
+    furi_check(record_data->waiting_count < FURI_RECORD_HOLDERS_MAX);
+    record_data->waiting_count++;
+}
+
+static void furi_record_data_decrement_waiting_count(FuriRecordData* record_data) {
+    if(record_data->waiting_count > 0) {
+        record_data->waiting_count--;
+    } else {
+        furi_crash("Waiting count mismatch");
     }
 }
 
@@ -176,8 +195,9 @@ void furi_record_destroy(const char* name) {
 
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
+    furi_check(record_data->pending_count == 0);
 
-    if(record_data->holders_count == 0) {
+    if(furi_record_can_erase(record_data)) {
         furi_record_erase(name, record_data);
     } else {
         furi_record_reset(record_data);
@@ -191,7 +211,7 @@ void furi_record_destroy(const char* name) {
 
         furi_record_lock();
 
-        if(record_data->holders_count == 0) {
+        if(furi_record_can_erase(record_data)) {
             furi_record_erase(name, record_data);
         }
 
@@ -212,7 +232,7 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
-    furi_record_data_increment_count(record_data);
+    furi_record_data_increment_waiting_count(record_data);
 
     furi_record_unlock();
 
@@ -236,19 +256,24 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
 
         furi_record_lock();
 
-        data_ptr = record_data->data;
+        if(data_ptr != NULL) {
+            data_ptr = record_data->data;
+            furi_record_data_increment_count(record_data);
+        }
 
         furi_record_unlock();
 
     } while(data_ptr == NULL);
 
-    if(data_ptr == NULL) {
-        furi_record_lock();
+    furi_record_lock();
 
-        furi_record_data_decrement_count(record_data);
+    furi_record_data_decrement_waiting_count(record_data);
 
-        furi_record_unlock();
+    if(furi_record_can_erase(record_data)) {
+        furi_record_erase(name, record_data);
     }
+
+    furi_record_unlock();
 
     return data_ptr;
 }
