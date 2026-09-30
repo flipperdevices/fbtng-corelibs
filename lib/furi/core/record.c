@@ -44,11 +44,12 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
     FuriRecordDataDict_erase(furi_record->records, name);
 }
 
-static bool furi_record_can_erase(const FuriRecordData* record_data) {
-    return (record_data->holders_count == 0) && (record_data->waiting_count == 0);
+static bool furi_record_data_can_erase(const FuriRecordData* record_data) {
+    return (record_data->data == NULL) && (record_data->holders_count == 0) &&
+           (record_data->waiting_count == 0);
 }
 
-static void furi_record_reset(FuriRecordData* record_data) {
+static void furi_record_data_reset(FuriRecordData* record_data) {
     furi_event_flag_clear(record_data->flags, FuriRecordFlagReady | FuriRecordFlagReleased);
 
     record_data->data = NULL;
@@ -216,13 +217,12 @@ void furi_record_destroy(const char* name) {
     furi_check(record_data);
     furi_check(record_data->pending_count == 0);
 
-    if(furi_record_can_erase(record_data)) {
+    furi_record_data_reset(record_data);
+
+    if(record_data->pending_count != 0) {
+        should_wait = true;
+    } else if(furi_record_data_can_erase(record_data)) {
         furi_record_erase(name, record_data);
-    } else {
-        furi_record_reset(record_data);
-        if(record_data->pending_count != 0) {
-            should_wait = true;
-        }
     }
 
     furi_record_unlock();
@@ -232,7 +232,7 @@ void furi_record_destroy(const char* name) {
 
         furi_record_lock();
 
-        if(furi_record_can_erase(record_data)) {
+        if(furi_record_data_can_erase(record_data)) {
             furi_record_erase(name, record_data);
         }
 
