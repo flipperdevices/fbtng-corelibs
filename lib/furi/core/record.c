@@ -146,6 +146,7 @@ static FuriRecordData* furi_record_data_create(const char* name) {
         .data = NULL,
         .holders_count = 0,
         .pending_count = 0,
+        .waiting_count = 0,
     };
 
     furi_record_put(name, &new_record);
