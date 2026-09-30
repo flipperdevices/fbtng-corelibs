@@ -45,8 +45,7 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
 }
 
 static bool furi_record_can_erase(const FuriRecordData* record_data) {
-    return (record_data->holders_count == 0) && (record_data->pending_count == 0) &&
-           (record_data->waiting_count == 0);
+    return (record_data->holders_count == 0) && (record_data->waiting_count == 0);
 }
 
 static void furi_record_reset(FuriRecordData* record_data) {
@@ -256,7 +255,7 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
 
         furi_record_lock();
 
-        if(data_ptr != NULL) {
+        if(record_data->data != NULL) {
             data_ptr = record_data->data;
             furi_record_data_increment_count(record_data);
         }
@@ -268,10 +267,6 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_record_lock();
 
     furi_record_data_decrement_waiting_count(record_data);
-
-    if(furi_record_can_erase(record_data)) {
-        furi_record_erase(name, record_data);
-    }
 
     furi_record_unlock();
 
