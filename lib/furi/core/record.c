@@ -62,6 +62,25 @@ void furi_record_init(void) {
     FuriRecordDataDict_init(furi_record->records);
 }
 
+static uint32_t furi_record_calc_ready_timeout(uint32_t start_ticks, uint32_t timeout) {
+    uint32_t wait_ticks;
+
+    if(timeout != FuriWaitForever) {
+        const uint32_t elapsed_ticks = furi_get_tick() - start_ticks;
+
+        if(elapsed_ticks < timeout) {
+            wait_ticks = timeout - elapsed_ticks;
+        } else {
+            wait_ticks = 0;
+        }
+
+    } else {
+        wait_ticks = FuriWaitForever;
+    }
+
+    return wait_ticks;
+}
+
 static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
     bool ret = false;
 
@@ -200,7 +219,9 @@ void furi_record_destroy(const char* name) {
         furi_record_erase(name, record_data);
     } else {
         furi_record_reset(record_data);
-        should_wait = true;
+        if(record_data->pending_count != 0) {
+            should_wait = true;
+        }
     }
 
     furi_record_unlock();
@@ -236,20 +257,11 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_record_unlock();
 
     void* data_ptr = NULL;
-    uint32_t remaining_ticks = timeout;
 
     do {
-        if(remaining_ticks != FuriWaitForever) {
-            const uint32_t elapsed_ticks = furi_get_tick() - start_ticks;
+        const uint32_t wait_ticks = furi_record_calc_ready_timeout(start_ticks, timeout);
 
-            if(elapsed_ticks < remaining_ticks) {
-                remaining_ticks -= elapsed_ticks;
-            } else {
-                remaining_ticks = 0;
-            }
-        }
-
-        if(!furi_record_data_wait_for_ready(record_data, remaining_ticks)) {
+        if(!furi_record_data_wait_for_ready(record_data, wait_ticks)) {
             break;
         }
 
