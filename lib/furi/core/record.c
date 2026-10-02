@@ -15,6 +15,7 @@ typedef enum {
 } FuriRecordFlag;
 
 typedef struct {
+    FuriThreadId owner;
     FuriEventFlag* flags;
     void* data;
     uint16_t holders_count;
@@ -52,6 +53,7 @@ static bool furi_record_data_can_erase(const FuriRecordData* record_data) {
 static void furi_record_data_reset(FuriRecordData* record_data) {
     furi_event_flag_clear(record_data->flags, FuriRecordFlagReady | FuriRecordFlagReleased);
 
+    record_data->owner = NULL;
     record_data->data = NULL;
     record_data->pending_count = record_data->holders_count;
     record_data->holders_count = 0;
@@ -145,6 +147,7 @@ static void furi_record_data_decrement_waiting_count(FuriRecordData* record_data
 
 static FuriRecordData* furi_record_data_create(const char* name) {
     const FuriRecordData new_record = {
+        .owner = NULL,
         .flags = furi_event_flag_alloc(),
         .data = NULL,
         .holders_count = 0,
@@ -198,9 +201,11 @@ void furi_record_create(const char* name, void* data) {
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
+    furi_check(record_data->owner == NULL);
     furi_check(record_data->data == NULL);
     furi_check(record_data->pending_count == 0);
 
+    record_data->owner = furi_thread_get_current_id();
     record_data->data = data;
     furi_event_flag_set(record_data->flags, FuriRecordFlagReady);
 
@@ -217,6 +222,7 @@ void furi_record_destroy(const char* name) {
 
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
+    furi_check(record_data->owner == furi_thread_get_current_id());
     furi_check(record_data->pending_count == 0);
 
     furi_record_data_reset(record_data);
