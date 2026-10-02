@@ -1,6 +1,7 @@
 #include "record.h"
 #include "check.h"
 #include "mutex.h"
+#include "kernel.h"
 #include "event_flag.h"
 
 #include <m-dict.h>
@@ -14,10 +15,12 @@ typedef enum {
 } FuriRecordFlag;
 
 typedef struct {
+    FuriThreadId owner;
     FuriEventFlag* flags;
     void* data;
     uint16_t holders_count;
     uint16_t pending_count;
+    uint16_t waiting_count;
 } FuriRecordData;
 
 DICT_DEF2(FuriRecordDataDict, const char*, M_CSTR_DUP_OPLIST, FuriRecordData, M_POD_OPLIST)
@@ -42,9 +45,15 @@ static void furi_record_erase(const char* name, FuriRecordData* record_data) {
     FuriRecordDataDict_erase(furi_record->records, name);
 }
 
-static void furi_record_reset(FuriRecordData* record_data) {
+static bool furi_record_data_can_erase(const FuriRecordData* record_data) {
+    return (record_data->data == NULL) && (record_data->holders_count == 0) &&
+           (record_data->waiting_count == 0);
+}
+
+static void furi_record_data_reset(FuriRecordData* record_data) {
     furi_event_flag_clear(record_data->flags, FuriRecordFlagReady | FuriRecordFlagReleased);
 
+    record_data->owner = NULL;
     record_data->data = NULL;
     record_data->pending_count = record_data->holders_count;
     record_data->holders_count = 0;
@@ -56,11 +65,44 @@ void furi_record_init(void) {
     FuriRecordDataDict_init(furi_record->records);
 }
 
+static uint32_t furi_record_calc_ready_timeout(uint32_t start_ticks, uint32_t timeout) {
+    uint32_t wait_ticks;
+
+    if(timeout != FuriWaitForever) {
+        const uint32_t elapsed_ticks = furi_get_tick() - start_ticks;
+
+        if(elapsed_ticks < timeout) {
+            wait_ticks = timeout - elapsed_ticks;
+        } else {
+            wait_ticks = 0;
+        }
+
+    } else {
+        wait_ticks = FuriWaitForever;
+    }
+
+    return wait_ticks;
+}
+
 static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, uint32_t timeout) {
+    bool ret = false;
+
     const uint32_t flags = furi_event_flag_wait(
         record_data->flags, FuriRecordFlagReady, FuriFlagWaitAny | FuriFlagNoClear, timeout);
 
-    return (flags == FuriRecordFlagReady);
+    if(flags & FuriFlagError) {
+        if(timeout == FuriWaitForever) {
+            furi_crash();
+        } else if(timeout == 0) {
+            furi_check(flags == FuriFlagErrorResource);
+        } else {
+            furi_check(flags == FuriFlagErrorTimeout);
+        }
+    } else if(flags & FuriRecordFlagReady) {
+        ret = true;
+    }
+
+    return ret;
 }
 
 static void furi_record_data_wait_for_released(const FuriRecordData* record_data) {
@@ -90,12 +132,27 @@ static void furi_record_data_decrement_count(FuriRecordData* record_data) {
     }
 }
 
+static void furi_record_data_increment_waiting_count(FuriRecordData* record_data) {
+    furi_check(record_data->waiting_count < FURI_RECORD_HOLDERS_MAX);
+    record_data->waiting_count++;
+}
+
+static void furi_record_data_decrement_waiting_count(FuriRecordData* record_data) {
+    if(record_data->waiting_count > 0) {
+        record_data->waiting_count--;
+    } else {
+        furi_crash("Waiting count mismatch");
+    }
+}
+
 static FuriRecordData* furi_record_data_create(const char* name) {
     const FuriRecordData new_record = {
+        .owner = NULL,
         .flags = furi_event_flag_alloc(),
         .data = NULL,
         .holders_count = 0,
         .pending_count = 0,
+        .waiting_count = 0,
     };
 
     furi_record_put(name, &new_record);
@@ -139,13 +196,16 @@ bool furi_record_exists(const char* name) {
 void furi_record_create(const char* name, void* data) {
     furi_check(furi_record);
     furi_check(name);
+    furi_check(data);
 
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
+    furi_check(record_data->owner == NULL);
     furi_check(record_data->data == NULL);
     furi_check(record_data->pending_count == 0);
 
+    record_data->owner = furi_thread_get_current_id();
     record_data->data = data;
     furi_event_flag_set(record_data->flags, FuriRecordFlagReady);
 
@@ -162,12 +222,15 @@ void furi_record_destroy(const char* name) {
 
     FuriRecordData* record_data = furi_record_get(name);
     furi_check(record_data);
+    furi_check(record_data->owner == furi_thread_get_current_id());
+    furi_check(record_data->pending_count == 0);
 
-    if(record_data->holders_count == 0) {
-        furi_record_erase(name, record_data);
-    } else {
-        furi_record_reset(record_data);
+    furi_record_data_reset(record_data);
+
+    if(record_data->pending_count != 0) {
         should_wait = true;
+    } else if(furi_record_data_can_erase(record_data)) {
+        furi_record_erase(name, record_data);
     }
 
     furi_record_unlock();
@@ -177,7 +240,7 @@ void furi_record_destroy(const char* name) {
 
         furi_record_lock();
 
-        if(record_data->holders_count == 0) {
+        if(furi_record_data_can_erase(record_data)) {
             furi_record_erase(name, record_data);
         }
 
@@ -193,25 +256,40 @@ void* furi_record_open_ex(const char* name, uint32_t timeout) {
     furi_check(furi_record);
     furi_check(name);
 
+    const uint32_t start_ticks = furi_get_tick();
+
     furi_record_lock();
 
     FuriRecordData* record_data = furi_record_data_get_or_create(name);
-    furi_record_data_increment_count(record_data);
+    furi_record_data_increment_waiting_count(record_data);
 
     furi_record_unlock();
 
     void* data_ptr = NULL;
 
-    if(furi_record_data_wait_for_ready(record_data, timeout)) {
-        data_ptr = record_data->data;
+    do {
+        const uint32_t wait_ticks = furi_record_calc_ready_timeout(start_ticks, timeout);
 
-    } else {
+        if(!furi_record_data_wait_for_ready(record_data, wait_ticks)) {
+            break;
+        }
+
         furi_record_lock();
 
-        furi_record_data_decrement_count(record_data);
+        if(record_data->data != NULL) {
+            data_ptr = record_data->data;
+            furi_record_data_increment_count(record_data);
+        }
 
         furi_record_unlock();
-    }
+
+    } while(data_ptr == NULL);
+
+    furi_record_lock();
+
+    furi_record_data_decrement_waiting_count(record_data);
+
+    furi_record_unlock();
 
     return data_ptr;
 }

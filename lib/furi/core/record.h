@@ -89,7 +89,7 @@ bool furi_record_exists(const char* name);
  * @warning Record names MUST be unique at any point in time.
  *
  * @param[in] name name of the record to create
- * @param[in] data pointer to an arbitrary value
+ * @param[in] data pointer to an arbitrary value (must be non @c NULL)
  */
 void furi_record_create(const char* name, void* data);
 
