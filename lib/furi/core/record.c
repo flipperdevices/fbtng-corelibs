@@ -88,7 +88,7 @@ static bool furi_record_data_wait_for_ready(const FuriRecordData* record_data, u
     const uint32_t flags = furi_event_flag_wait(
         record_data->flags, FuriRecordFlagReady, FuriFlagWaitAny | FuriFlagNoClear, timeout);
 
-    if(flags == FuriRecordFlagReady) {
+    if(flags & FuriRecordFlagReady) {
         ret = true;
     } else if(timeout == FuriWaitForever) {
         furi_crash();

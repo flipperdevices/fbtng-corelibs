@@ -62,6 +62,11 @@ uint32_t furi_event_flag_get(FuriEventFlag* instance);
  * @param[in]  options   The option flags
  * @param[in]  timeout   The timeout
  *
+ * @warning The return value might contain bits that are NOT present
+ *          in the value passed as @p flags when this function succeeds,
+ *          if another thread sets these bits along with the requested ones.
+ *          See xEventGroupWaitBits documentation for more info.
+ *
  * @return     Resulting flags or error (FuriStatus)
  */
 uint32_t furi_event_flag_wait(
