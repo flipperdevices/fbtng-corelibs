@@ -10,6 +10,12 @@
 extern "C" {
 #endif
 
+/** Tick-based timer */
+typedef struct {
+    uint32_t start; /**< Tick count at timer acquisition */
+    uint32_t value; /**< Timeout duration in ticks */
+} FuriTickTimer;
+
 /** Check if CPU is in IRQ or kernel running and IRQ is masked
  * 
  * Originally this primitive was born as a workaround for FreeRTOS kernel primitives shenanigans with PRIMASK.
@@ -92,6 +98,22 @@ FuriStatus furi_delay_until_tick(uint32_t tick);
  * @return     Current ticks in milliseconds
  */
 uint32_t furi_get_tick(void);
+
+/** Get a tick-based timer
+ *
+ * @param[in]  timeout_ticks  Expiration timeout in ticks
+ *
+ * @return     FuriTickTimer instance
+ */
+FuriTickTimer furi_tick_timer_get(uint32_t timeout_ticks);
+
+/** Check if tick timer expired
+ *
+ * @param[in]  tick_timer  FuriTickTimer instance
+ *
+ * @return     true if expired
+ */
+bool furi_tick_timer_is_expired(FuriTickTimer tick_timer);
 
 /** Convert milliseconds to ticks
  *
